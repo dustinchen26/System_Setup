@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIOS / iDRAC System Setup 參數檢視器</title>
+    <!-- 引入 SheetJS 以支援匯出標準 Excel (.xlsx) 檔案 -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Microsoft JhengHei", sans-serif;
+            background-color: #f0f2f5;
+            color: #212529;
+            margin: 0;
+            padding: 12px;
+            font-size: 13px;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 14px 18px;
+            border-radius: 6px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+        h2 {
+            margin: 0;
+            font-size: 16px;
+            color: #0076ce;
+        }
+        .badge-hint {
+            font-size: 11px;
+            color: #6c757d;
+        }
+        .upload-area {
+            border: 1.5px dashed #0076ce;
+            border-radius: 4px;
+            padding: 10px 15px;
+            text-align: center;
+            background-color: #f8fbff;
+            cursor: pointer;
+            transition: background-color 0.15s;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            background-color: #e6f2ff;
+        }
+        .upload-area input[type="file"] {
+            display: none;
+        }
+        .upload-btn {
+            background-color: #0076ce;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            background-color: #e9ecef;
+            padding: 6px 12px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        .file-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .file-name-display {
+            font-weight: bold;
+            color: #212529;
+        }
+        .file-name-display span {
+            color: #0076ce;
+        }
+        .format-tag {
+            background: #0076ce;
+            color: #fff;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        .toolbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .action-btn {
+            padding: 4px 10px;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+        .btn-md {
+            background-color: #ffffff;
+            color: #212529;
+            border-color: #ced4da;
+        }
+        .btn-md:hover {
+            background-color: #f8f9fa;
+            border-color: #adb5bd;
+        }
+        .btn-md.copied {
+            background-color: #198754;
+            color: #ffffff;
+            border-color: #198754;
+        }
+        .btn-excel {
+            background-color: #198754;
+            color: #ffffff;
+        }
+        .btn-excel:hover {
+            background-color: #157347;
+        }
+        .search-box {
+            padding: 4px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            width: 220px;
+            font-size: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            line-height: 1.25;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 3px 8px;
+            text-align: left;
+            word-break: break-word;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #0076ce;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            padding: 5px 8px;
+        }
+        tr:nth-child(even):not(.sec-lvl-1):not(.sec-lvl-2):not(.sec-lvl-3) {
+            background-color: #f8f9fa;
+        }
+        tr.data-row:hover {
+            background-color: #e8f3fc;
+        }
+        /* 分類階層標題樣式（緊湊版） */
+        tr.sec-lvl-1 td {
+            background-color: #212529;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 12.5px;
+            padding: 4px 8px;
+        }
+        tr.sec-lvl-2 td {
+            background-color: #495057;
+            color: #ffffff;
+            font-weight: bold;
+            padding: 3px 8px 3px 16px;
+        }
+        tr.sec-lvl-3 td {
+            background-color: #dee2e6;
+            color: #212529;
+            font-weight: 600;
+            padding: 3px 8px 3px 24px;
+        }
+        .param-cell {
+            color: #212529;
+            font-weight: 500;
+        }
+        .val-cell {
+            font-family: Consolas, "Courier New", monospace;
+            color: #0b5ed7;
+        }
+        .empty-value {
+            color: #adb5bd;
+            font-style: italic;
+            font-family: inherit;
+        }
+        .not-captured {
+            color: #868e96;
+            font-style: italic;
+        }
+        .placeholder-text {
+            text-align: center;
+            color: #6c757d;
+            padding: 25px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-row">
+        <h2>BIOS / iDRAC System Setup 參數檢視器</h2>
+        <span class="badge-hint">支援格式：Tab 分隔格式 / 網頁貼上項目符號黏連格式</span>
+    </div>
+
+    <!-- 檔案上傳區塊 -->
+    <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <span class="upload-btn">選擇檔案</span>
+        <span>點擊或拖曳 System Setup (.txt) 檔案至此處</span>
+        <input type="file" id="fileInput" accept=".txt">
+    </div>
+
+    <!-- 檔名顯示、匯出按鈕與搜尋列 -->
+    <div class="info-bar" id="infoBar" style="display: none;">
+        <div class="file-meta">
+            <div class="file-name-display">檔案名稱：<span id="fileName"></span></div>
+            <span class="format-tag" id="formatType"></span>
+            <span id="rowCount" style="color: #495057;"></span>
+        </div>
+        <div class="toolbar-actions">
+            <button type="button" class="action-btn btn-md" id="copyMdBtn" onclick="copyAsMarkdown()">📋 複製 Markdown</button>
+            <button type="button" class="action-btn btn-excel" id="exportExcelBtn" onclick="downloadAsExcel()">📊 下載 Excel</button>
+            <input type="text" id="searchInput" class="search-box" placeholder="即時過濾參數或數值...">
+        </div>
+    </div>
+
+    <!-- 資料表格 -->
+    <div id="tableContainer">
+        <div class="placeholder-text">請上傳 System Setup 文字檔以檢視內容</div>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const infoBar = document.getElementById('infoBar');
+    const fileNameSpan = document.getElementById('fileName');
+    const formatTypeSpan = document.getElementById('formatType');
+    const rowCountSpan = document.getElementById('rowCount');
+    const tableContainer = document.getElementById('tableContainer');
+    const searchInput = document.getElementById('searchInput');
+    const copyMdBtn = document.getElementById('copyMdBtn');
+
+    // 儲存當前解析後的資料結構，供匯出 Markdown / Excel 使用
+    let currentParsedRows = [];
+    let currentBaseFileName = 'System_Setup';
+
+    // BIOS / iDRAC 已知無數值之分類標題或空白設定項 (精準比對用)
+    const EXACT_HEADERS_OR_EMPTY = new Set([
+        "System Setup", "System BIOS", "System Information", "Memory Settings",
+        "Memory Map Out", "Processor Settings", "Dell Controlled Turbo",
+        "Processor 0", "Processor 1", "NVMe Settings", "Boot Settings",
+        "UEFI Boot Settings", "Network Settings", "PXE Device 1 Settings",
+        "PXE Device 2 Settings", "PXE Device 3 Settings", "PXE Device 4 Settings",
+        "HTTP Device 1 Settings", "HTTP Device 2 Settings", "HTTP Device 3 Settings",
+        "HTTP Device 4 Settings", "TLS Authentication", "iSCSI Device 1 Settings",
+        "Connection 1 Settings", "Connection 2 Settings", "NVMe-oF Subsystem Settings",
+        "NVMe-oF Subsystem 1 Settings", "NVMe-oF Subsystem 2 Settings",
+        "NVMe-oF Subsystem 3 Settings", "NVMe-oF Subsystem 4 Settings",
+        "Integrated Devices", "Slot Disablement", "Slot Bifurcation",
+        "Serial Communication", "System Profile Settings", "System Security",
+        "TPM Advanced Settings", "Redundant OS Control", "Miscellaneous Settings",
+        "iDRAC Settings", "System Summary", "System Event Log", "Network",
+        "NIC 1", "IPv4", "IPv6", "VLAN", "OCP Slot Power When Host Off (S5 State)",
+        "Common Settings", "IPMI", "Alerts", "Front Panel Security",
+        "Media & USB Settings", "Virtual Media", "USB Management Port",
+        "Lifecycle Controller", "Hardware Configuration Validation",
+        "Power Configuration", "Power Supply Options", "Thermal",
+        "System Location", "User Configuration", "Communications Permissions",
+        "OS to iDRAC Pass-Through", "Remote Enablement", "About",
+        // 常見留白欄位
+        "IP", "Subnet Mask", "Gateway", "Primary DNS", "Secondary DNS", "URI",
+        "iSCSI Initiator Name", "Initiator IP Address", "Initiator Subnet Mask",
+        "Initiator Gateway", "Target Name", "Target IP Address", "ISID",
+        "CHAP Name", "Reverse CHAP Name", "Host Security Key Path",
+        "Host IP Address", "Host Subnet Mask", "Host Gateway",
+        "Subsystem NQN", "Subsystem Address", "Subsystem NID", "Security Key Path",
+        "Asset Tag", "Static DNS Domain Name", "Alert Destination 1",
+        "Alert Destination 2", "Alert Destination 3", "Alert Destination 4",
+        "Alert Destination 5", "Alert Destination 6", "Alert Destination 7",
+        "Alert Destination 8", "Hot Spare", "Data Center Name", "Aisle Name",
+        "Rack Name", "Provisioning Server"
+    ]);
+
+    // 參數名稱前綴白名單 (處理參數與數值無空格直接黏連，依照長度由長到短排序避免誤切)
+    const KNOWN_PARAM_PREFIXES = [
+        "DIMM Self-Healing (Post-Package Repair) on Uncorrectable Memory Error",
+        "Enable Writes to SGXLEPUBKEYHASH from OS/SW",
+        "Enable/Disable SGX Auto MP Registration Agent",
+        "USB Server Configuration Profile (SCP)",
+        "System Manufacturer Contact Information",
+        "Current State of Embedded Video Controller",
+        "CPU Interconnect Bus Link Power Management",
+        "PCI ASPM L1 Link Power Management",
+        "Use DHCP to Obtain DNS Server Addresses",
+        "Use DHCPv6 to Obtain DNS Server Addresses",
+        "Enable Platform Event Filter Alerts",
+        "Collect System Inventory on Restart",
+        "TDX Secure Arbitration Mode (SEAM) Loader",
+        "Intel Trust Domain Extensions (TDX)",
+        "PCIe Data Link Feature Exchange",
+        "Dell Wyse P25/P45 BIOS Access",
+        "Auto-Discovery Bifurcation",
+        "Serial Port User Privilege",
+        "USB Pass-Through Configuration",
+        "LOM Pass-Through Configuration",
+        "Power Supply Capacity Alert",
+        "Configuration Validation State",
+        "Adjacent Cache Line Prefetch",
+        "SGX Package Info In-Band Access",
+        "UEFI CA Certificate Scope",
+        "In-Band Manageability Interface",
+        "User-Accessible USB Ports",
+        "Dell AVX Scaling Technology",
+        "CPU Physical Address Limit",
+        "Number of Cores per Processor",
+        "AVX ICCP Pre-Grant License",
+        "Dead Line LLC Allocation",
+        "Correctable Error Logging",
+        "UEFI Compliance Version",
+        "System Model Name", "System BIOS Version", "System Service Tag",
+        "System Manufacturer", "System FPGA Version", "System Memory Size",
+        "System Memory Type", "System Memory Speed", "Video Memory",
+        "System Memory Testing", "Memory Operating Mode", "Node Interleaving",
+        "Memory Training", "Memory Paging Policy", "Logical Processor",
+        "Virtualization Technology", "Preboot DMA Protection",
+        "Kernel DMA Protection", "Directory Mode", "Hardware Prefetcher",
+        "DCU Streamer Prefetcher", "DCU IP Prefetcher", "Virtual NUMA",
+        "Sub-NUMA Cluster", "MADT Core Enumeration", "UPI Prefetch",
+        "XPT Prefetch", "LLC Prefetch", "Directory AtoS", "AVX P1",
+        "SST Performance Profile", "Dell Controlled Turbo", "Optimizer Mode",
+        "AMP Prefetch", "Homeless Prefetch", "Processor Core Speed",
+        "Family-Model-Stepping", "Brand", "Level 2 Cache", "Level 3 Cache",
+        "Number of Cores", "Microcode", "NVMe Mode", "BIOS NVMe Driver",
+        "Boot Mode", "Boot Sequence Retry", "Generic USB Boot",
+        "Hard Disk Placeholder", "Clean Sysprep Variables", "Interactive Mode",
+        "UEFI Boot Sequence", "Number of PXE Devices", "TLS Authentication Mode",
+        "DNS Info via DHCP", "Target Info via DHCP", "Target Boot LUN",
+        "Authentication Type", "Reverse CHAP Secret", "Connection Order",
+        "NVMe-oF Host NQN Mode", "NVMe-oF Host NQN", "NVMe-oF Host ID",
+        "Subsystem Info via DHCP", "Subsystem Controller ID",
+        "iDRAC Direct USB Port", "Embedded Video Controller",
+        "I/O Snoop Hold-Off Response", "SR-IOV Global Enable",
+        "Empty Slot Unhide", "Memory-Mapped I/O Base", "PCIe PTM Support",
+        "PCIe Resizable BAR", "Serial Communication", "Serial Port Address",
+        "External Serial Connector", "Failsafe Baud Rate", "Remote Terminal Type",
+        "System Profile", "CPU Power Management", "Memory Frequency",
+        "Turbo Boost", "Energy-Efficient Turbo", "Memory Patrol Scrub",
+        "Memory Refresh Rate", "Dynamic Load Line Switch",
+        "Latency-Optimized Mode", "Energy-Efficient Policy", "MONITOR / MWAIT",
+        "Workload Profile", "Workload Configuration", "SMM Security Mitigation",
+        "Strong Password", "System Password", "Setup Password",
+        "Password Rotation", "Maximum Password Age", "Password History",
+        "Password Status", "TPM Security", "TPM Information", "TPM Firmware",
+        "TPM Hierarchy", "TPM PPI Bypass Provision", "TPM PPI Bypass Clear",
+        "TPM 2.0 Algorithm", "Memory Encryption", "Global Memory Integrity",
+        "TME-MT / TDX Key Split", "PRMRR Size", "SGX QoS", "Owner Epochs",
+        "SGX Factory Reset", "Power Button", "UEFI Variable Access",
+        "Secure Boot Policy", "Secure Boot Mode", "Secure Boot",
+        "Redundant OS Location", "Redundant OS State", "Redundant OS Boot",
+        "System Time", "System Date", "Time Zone", "Daylight Saving Time",
+        "Keyboard NumLock", "F1/F2 Prompt on Error", "Power Cycle Request",
+        "ACPI FPDT", "Enable NIC", "NIC Selection", "Failover Network",
+        "MAC Address", "Link Tuning", "Auto Dedicated NIC",
+        "Network Speed (Mbps)", "Active NIC Interface", "Duplex Mode",
+        "Enable IPv4", "Enable DHCP", "Static IP Address", "Static Gateway",
+        "Static Subnet Mask", "Static Preferred DNS Server",
+        "Static Alternate DNS Server", "Enable IPv6", "Address Generation Mode",
+        "Enable Auto-Configuration", "Static IP Address 1", "Static Prefix Length",
+        "Link Local Address", "IP Address 2", "Enable VLAN ID",
+        "Register iDRAC on DNS", "DNS iDRAC Name", "Auto-Configure Domain Name",
+        "Static DNS Domain Name", "Enable IPMI over LAN",
+        "Channel Privilege Level Limit", "Encryption Key", "Community String",
+        "Virtual Media Status", "USB Management Port Mode",
+        "Lifecycle Controller", "Power Cap Policy", "Maximum Power Cap (W)",
+        "Minimum Power Cap (W)", "Power Cap (W)", "Redundancy Policy",
+        "Thermal Profile", "Fan Speed Offset", "Minimum Fan Speed",
+        "Rack Slot", "Size of Managed System (U)", "User ID", "Enable User",
+        "User Name", "LAN User Privilege", "USB NIC IP Address",
+        "Enable Auto-Discovery", "Transport Type", "Retry Count",
+        "Target Port", "CHAP Type", "CHAP Secret", "Subsystem Port",
+        "VLAN Priority", "VLAN ID", "Interface", "Protocol", "Timeout",
+        "Security", "Password", "Priority", "Intel TXT", "Intel SGX",
+        "C-States", "AES-NI", "NVMe-oF", "ADDDC", "VLAN", "DHCP", "C1E"
+    ].sort((a, b) => b.length - a.length);
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+        fileNameSpan.textContent = file.name;
+        currentBaseFileName = file.name.replace(/\.[^/.]+$/, "") || 'System_Setup';
+        infoBar.style.display = 'flex';
+        searchInput.value = '';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            renderTable(e.target.result);
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
+
+    // 智慧解析單行內容：兼容 Tab 分隔與項目符號無分隔格式
+    function parseLine(rawLine) {
+        let line = rawLine.replace(/\r/g, '');
+        if (!line.trim()) return null;
+
+        // 偵測項目符號層級 (•, o, , ▪, -, *)
+        let bulletLevel = 0;
+        const bulletMatch = line.match(/^\s*([•o▪\-\*])(?:\t|\s+)(.*)$/);
+        if (bulletMatch) {
+            const symbol = bulletMatch[1];
+            if (symbol === '•') bulletLevel = 1;
+            else if (symbol === 'o') bulletLevel = 2;
+            else bulletLevel = 3;
+            line = bulletMatch[2].trim();
+        } else {
+            line = line.trim();
+        }
+
+        if (!line) return null;
+
+        // 1. 優先檢查標準 Tab 分隔格式 (例如: "System Memory Size\t128 GB")
+        if (line.includes('\t')) {
+            const parts = line.split('\t');
+            return {
+                type: 'data',
+                param: parts[0].trim(),
+                value: parts.slice(1).join('\t').trim(),
+                format: 'Tab 分隔'
+            };
+        }
+
+        // 2. 檢查版權與 iDRAC 頁尾資訊
+        if (line.startsWith('©') || /^iDRAC v[\d\.]+/.test(line)) {
+            return { type: 'section', level: 1, text: line, format: '階層黏連' };
+        }
+
+        // 3. 檢查是否為已知標題或純留白參數
+        if (EXACT_HEADERS_OR_EMPTY.has(line)) {
+            const emptyFields = new Set([
+                "IP", "Subnet Mask", "Gateway", "Primary DNS", "Secondary DNS", "URI",
+                "iSCSI Initiator Name", "Initiator IP Address", "Initiator Subnet Mask",
+                "Initiator Gateway", "Target Name", "Target IP Address", "ISID",
+                "CHAP Name", "Reverse CHAP Name", "Host Security Key Path",
+                "Host IP Address", "Host Subnet Mask", "Host Gateway",
+                "Subsystem NQN", "Subsystem Address", "Subsystem NID", "Security Key Path",
+                "Asset Tag", "Static DNS Domain Name", "Alert Destination 1",
+                "Alert Destination 2", "Alert Destination 3", "Alert Destination 4",
+                "Alert Destination 5", "Alert Destination 6", "Alert Destination 7",
+                "Alert Destination 8", "Hot Spare", "Data Center Name", "Aisle Name",
+                "Rack Name", "Provisioning Server"
+            ]);
+            if (emptyFields.has(line)) {
+                return { type: 'data', param: line, value: '', format: '階層黏連' };
+            }
+            return { type: 'section', level: bulletLevel || 2, text: line, format: '階層黏連' };
+        }
+
+        // 4. 透過 BIOS 參數前綴字典進行精準切分
+        for (const prefix of KNOWN_PARAM_PREFIXES) {
+            if (line.startsWith(prefix)) {
+                const rest = line.slice(prefix.length);
+                if (rest === '' || !(/[a-z]$/.test(prefix) && /^[a-z]/.test(rest))) {
+                    return {
+                        type: 'data',
+                        param: prefix,
+                        value: rest.trim(),
+                        format: '階層黏連'
+                    };
+                }
+            }
+        }
+
+        // 5. 動態編號型參數切分
+        const dynamicMatch = line.match(
+            /^((?:DIMM Slot|PXE Device|HTTP Device|iSCSI Device|Connection|NVMe-oF Subsystem|Slot|NIC\.Slot\.)\s*\d+)(Enabled|Disabled|On|Off|Auto|None|.*)$/
+        );
+        if (dynamicMatch && dynamicMatch[2] !== '') {
+            return {
+                type: 'data',
+                param: dynamicMatch[1].trim(),
+                value: dynamicMatch[2].trim(),
+                format: '階層黏連'
+            };
+        }
+
+        // Alert Destination 10.0.0.0 -> "Alert Destination 1" + "0.0.0.0"
+        const alertIpMatch = line.match(/^(Alert Destination [1-8])(\d+\.\d+\.\d+\.\d+)$/);
+        if (alertIpMatch) {
+            return {
+                type: 'data',
+                param: alertIpMatch[1],
+                value: alertIpMatch[2],
+                format: '階層黏連'
+            };
+        }
+
+        // 6. 啟發式後備規則 (Fallback Regex)
+        const fallbackPatterns = [
+            /^(.*?)(\(Not captured\))$/,
+            /^(.*?)(Enabled|Disabled|On|Off|Auto|None|Full|Half|Standard|Linear|Normal|Balance|Public|public)$/,
+            /^(.*?)(\d+(?:\.\d+)*(?:\s*(?:GB|MB|KB|TB|MT\/s|GHz|MHz|Mbps|W))?)$/,
+            /^(.*?)(0x[0-9a-fA-F]+)$/
+        ];
+        for (const regex of fallbackPatterns) {
+            const m = line.match(regex);
+            if (m && m[1].trim().length > 0) {
+                return {
+                    type: 'data',
+                    param: m[1].trim(),
+                    value: m[2].trim(),
+                    format: '階層黏連'
+                };
+            }
+        }
+
+        // 7. 若皆無數值特徵，視為群組/分類標題
+        return {
+            type: 'section',
+            level: bulletLevel || 2,
+            text: line,
+            format: '階層黏連'
+        };
+    }
+
+    function renderTable(text) {
+        const lines = text.split(/\r?\n/);
+        let detectedFormat = 'Tab 分隔';
+        let dataCount = 0;
+        currentParsedRows = [];
+
+        let html = `
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th style="width: 48%;">參數名稱 (Parameter)</th>
+                        <th style="width: 52%;">數值 (Value)</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        lines.forEach(rawLine => {
+            const parsed = parseLine(rawLine);
+            if (!parsed) return;
+
+            currentParsedRows.push(parsed);
+
+            if (parsed.format === '階層黏連') {
+                detectedFormat = '階層項目符號格式';
+            }
+
+            if (parsed.type === 'section') {
+                const lvlClass = `sec-lvl-${Math.min(Math.max(parsed.level, 1), 3)}`;
+                html += `
+                    <tr class="section-header ${lvlClass}">
+                        <td colspan="2">${escapeHtml(parsed.text)}</td>
+                    </tr>
+                `;
+            } else {
+                dataCount++;
+                let valHtml = '';
+                if (parsed.value === '') {
+                    valHtml = '<span class="empty-value">(空白)</span>';
+                } else if (parsed.value === '(Not captured)') {
+                    valHtml = '<span class="not-captured">(Not captured)</span>';
+                } else {
+                    valHtml = escapeHtml(parsed.value);
+                }
+
+                html += `
+                    <tr class="data-row">
+                        <td class="param-cell">${escapeHtml(parsed.param)}</td>
+                        <td class="val-cell">${valHtml}</td>
+                    </tr>
+                `;
+            }
+        });
+
+        html += `</tbody></table>`;
+        tableContainer.innerHTML = html;
+        formatTypeSpan.textContent = detectedFormat;
+        rowCountSpan.textContent = `共解析 ${dataCount} 項參數`;
+    }
+
+    // 取得目前符合搜尋過濾條件的資料列
+    function getFilteredRows() {
+        const filter = searchInput.value.trim().toLowerCase();
+        if (!filter) return currentParsedRows;
+
+        return currentParsedRows.filter(row => {
+            if (row.type === 'section') return false;
+            const paramMatch = row.param.toLowerCase().includes(filter);
+            const valMatch = row.value.toLowerCase().includes(filter);
+            return paramMatch || valMatch;
+        });
+    }
+
+    // 複製為 Markdown 格式
+    async function copyAsMarkdown() {
+        const rows = getFilteredRows();
+        if (rows.length === 0) {
+            alert('目前沒有可複製的資料！');
+            return;
+        }
+
+        let mdLines = [`# ${currentBaseFileName}\n`];
+        let inTable = false;
+
+        const escapeMdCell = (str) => String(str || '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+
+        rows.forEach(row => {
+            if (row.type === 'section') {
+                if (inTable) {
+                    mdLines.push('');
+                    inTable = false;
+                }
+                const hashes = '#'.repeat(Math.min(Math.max(row.level + 1, 2), 4));
+                mdLines.push(`${hashes} ${row.text}\n`);
+            } else {
+                if (!inTable) {
+                    mdLines.push('| 參數名稱 (Parameter) | 數值 (Value) |');
+                    mdLines.push('| :--- | :--- |');
+                    inTable = true;
+                }
+                const displayVal = row.value === '' ? '*(空白)*' : escapeMdCell(row.value);
+                mdLines.push(`| ${escapeMdCell(row.param)} | ${displayVal} |`);
+            }
+        });
+
+        const markdownText = mdLines.join('\n').trim() + '\n';
+
+        try {
+            await navigator.clipboard.writeText(markdownText);
+        } catch (err) {
+            // 相容舊版瀏覽器或非 HTTPS 環境的複製備案
+            const textarea = document.createElement('textarea');
+            textarea.value = markdownText;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+
+        // 視覺回饋
+        const originalText = copyMdBtn.innerHTML;
+        copyMdBtn.innerHTML = '✅ 已複製 Markdown！';
+        copyMdBtn.classList.add('copied');
+        setTimeout(() => {
+            copyMdBtn.innerHTML = originalText;
+            copyMdBtn.classList.remove('copied');
+        }, 2000);
+    }
+
+    // 下載為 Excel (.xlsx)
+    function downloadAsExcel() {
+        const rows = getFilteredRows();
+        if (rows.length === 0) {
+            alert('目前沒有可匯出的資料！');
+            return;
+        }
+
+        if (typeof XLSX === 'undefined') {
+            alert('Excel 匯出元件尚未載入完成，請確認網路連線或稍後再試。');
+            return;
+        }
+
+        const aoa = [
+            ['參數名稱 (Parameter)', '數值 (Value)']
+        ];
+
+        rows.forEach(row => {
+            if (row.type === 'section') {
+                const indent = row.level === 1 ? '■ ' : (row.level === 2 ? '  ▸ ' : '    • ');
+                aoa.push([`${indent}${row.text}`, '']);
+            } else {
+                aoa.push([row.param, row.value]);
+            }
+        });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+        // 設定欄位寬度
+        ws['!cols'] = [
+            { wch: 52 },
+            { wch: 44 }
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'System Setup');
+
+        const suffix = searchInput.value.trim() ? '_filtered' : '';
+        XLSX.writeFile(wb, `${currentBaseFileName}${suffix}.xlsx`);
+    }
+
+    // 即時搜尋功能
+    searchInput.addEventListener('input', function() {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#dataTable tbody tr');
+
+        rows.forEach(row => {
+            if (row.classList.contains('section-header')) {
+                row.style.display = filter === '' ? '' : 'none';
+            } else {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            }
+        });
+    });
+
+    function escapeHtml(str) {
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+</script>
+
+</body>
+</html>
