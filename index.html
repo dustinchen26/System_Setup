@@ -227,14 +227,12 @@
         <span class="badge-hint">解析範圍：<b>System Setup → System BIOS → System Information</b> 起</span>
     </div>
 
-    <!-- 檔案上傳 -->
     <div class="upload-area" id="dropZone">
         <span class="upload-btn">選擇檔案</span>
         <span>點擊或拖曳 System Setup (.txt) 檔案至此處</span>
         <input type="file" id="fileInput" accept=".txt,.log,.text">
     </div>
 
-    <!-- 貼上輸入 -->
     <div class="paste-panel">
         <div class="paste-head">
             <label for="pasteInput">或直接貼上 System Setup 內容（Ctrl + Enter 解析）</label>
@@ -246,7 +244,6 @@
         <textarea id="pasteInput" placeholder="請將 System Setup 內容貼在此處……"></textarea>
     </div>
 
-    <!-- 資訊列 -->
     <div class="info-bar" id="infoBar" style="display: none;">
         <div class="file-meta">
             <div class="file-name-display">來源：<span id="fileName"></span></div>
@@ -262,7 +259,6 @@
 
     <div id="noticeContainer"></div>
 
-    <!-- 資料表格 -->
     <div id="tableContainer">
         <div class="placeholder-text">請上傳或貼上 System Setup 文字以檢視內容</div>
     </div>
@@ -290,26 +286,38 @@ let currentRows = [];
 let currentBaseFileName = 'System_Setup';
 
 /* =========================================================
-   ★ 預置枚舉（來自兩組 Log：BIOS 80.0.4 與 1.0.0） ★
+   ★ 預置枚舉（四組 Log 合併）
+   80.0.4 / 1.0.0 / 0.0.5 / 0.0.5(256GB)
+   取聯集，重複自動去重
    ========================================================= */
 const PRELOADED_ENUMS = {
-    // System Information
+    // ── System Information ──
     "System Model Name": ["PowerEdge XR9700"],
+    "System BIOS Version": [
+        "80.0.4 [TEST 1125 M2x2 Gen1 v3]",
+        "1.0.0",
+        "0.0.5 [X-REV]"
+    ],
     "System Manufacturer": ["Dell Inc."],
     "System Manufacturer Contact Information": ["www.dell.com"],
+    "System FPGA Version": ["1.0.1", "1.0.2", "0.4.2"],
 
-    // Memory Settings
+    // ── Memory Settings ──
+    "System Memory Size": ["128 GB", "256 GB"],
     "System Memory Type": ["ECC DDR5"],
+    "System Memory Speed": ["6400 MT/s"],
+    "Video Memory": ["16 MB"],
     "System Memory Testing": ["Disabled"],
     "Memory Operating Mode": ["OptimizerMode"],
     "Node Interleaving": ["Disabled"],
     "ADDDC": ["Disabled"],
     "Memory Training": ["MemoryTrainingFast"],
     "DIMM Self-Healing (Post-Package Repair) on Uncorrectable Memory Error": ["Enabled"],
-    "Correctable Error Logging": ["Disabled"],
+    "Correctable Error Logging": ["Disabled", "Enabled"],
     "Memory Paging Policy": ["PagingClosed"],
+    "Memory-Mapped I/O Base": ["56TB"],
 
-    // Processor Settings
+    // ── Processor Settings ──
     "Logical Processor": ["Enabled"],
     "Virtualization Technology": ["Enabled"],
     "Preboot DMA Protection": ["Disabled"],
@@ -331,26 +339,39 @@ const PRELOADED_ENUMS = {
     "SST Performance Profile": ["IssOp1"],
     "AVX ICCP Pre-Grant License": ["Disabled"],
     "Dell Controlled Turbo": ["Disabled"],
+    "Dell AVX Scaling Technology": ["0"],
     "Optimizer Mode": ["Auto"],
     "Number of Cores per Processor": ["All"],
     "CPU Physical Address Limit": ["Disabled"],
     "AMP Prefetch": ["Disabled"],
     "Homeless Prefetch": ["Auto"],
+    "Processor Core Speed": ["2.50 GHz"],
+    "Family-Model-Stepping": ["6-AE-1"],
     "Brand": ["INTEL(R) XEON(R) 6716P-B"],
+    "Level 2 Cache": ["80 MB"],
+    "Level 3 Cache": ["160 MB"],
+    "Number of Cores": ["40"],
+    "Microcode": ["0x1000309", "0x1000310"],
 
-    // NVMe
+    // ── NVMe ──
     "NVMe Mode": ["NonRaid"],
     "BIOS NVMe Driver": ["DellQualifiedDrives"],
 
-    // Boot
+    // ── Boot ──
     "Boot Mode": ["Uefi"],
     "Boot Sequence Retry": ["Enabled"],
-    "Generic USB Boot": ["Disabled"],
+    "Generic USB Boot": ["Disabled", "Enabled"],
     "Hard Disk Placeholder": ["Disabled"],
     "Clean Sysprep Variables": ["None"],
     "Interactive Mode": ["Enabled"],
+    "UEFI Boot Sequence": [
+        "Disk.USBFront.1-1,NIC.PxeDevice.1-1",
+        "PCIeSSD.Slot.21-0,NIC.PxeDevice.1-1",
+        "PCIeSSD.Slot.21-0,NIC.PxeDevice.1-1,GenericUSB.Placeholder.1-1"
+    ],
 
-    // Network / PXE
+    // ── Network / PXE ──
+    "Number of PXE Devices": ["4"],
     "PXE Device 1": ["Enabled", "Disabled"],
     "PXE Device 2": ["Disabled"],
     "PXE Device 3": ["Disabled"],
@@ -358,20 +379,26 @@ const PRELOADED_ENUMS = {
     "Interface": ["NIC.Embedded.4-1-1", "NIC.Embedded.1-1-1"],
     "Protocol": ["IPv4"],
     "VLAN": ["Disabled"],
+    "VLAN ID": ["1"],
+    "VLAN Priority": ["0"],
     "DHCP": ["Enabled", "Disabled"],
     "DNS Info via DHCP": ["Enabled"],
     "TLS Authentication Mode": ["OneWay"],
 
-    // iSCSI
+    // ── iSCSI ──
     "iSCSI Device 1": ["Disabled"],
     "Connection 1": ["Disabled"],
     "Connection 2": ["Disabled"],
+    "Retry Count": ["3"],
+    "Timeout": ["10000"],
     "Target Info via DHCP": ["Disabled"],
+    "Target Port": ["3260"],
+    "Target Boot LUN": ["0"],
     "Authentication Type": ["None"],
     "CHAP Type": ["OneWay"],
     "Connection Order": ["Con1Con2"],
 
-    // NVMe-oF
+    // ── NVMe-oF ──
     "NVMe-oF": ["Disabled"],
     "NVMe-oF Host NQN Mode": ["HostNqnModeDell"],
     "NVMe-oF Subsystem 1": ["Disabled"],
@@ -380,9 +407,11 @@ const PRELOADED_ENUMS = {
     "NVMe-oF Subsystem 4": ["Disabled"],
     "Transport Type": ["TCP"],
     "Subsystem Info via DHCP": ["Disabled"],
+    "Subsystem Port": ["4420"],
+    "Subsystem Controller ID": ["0"],
     "Security": ["Disabled"],
 
-    // Integrated Devices
+    // ── Integrated Devices ──
     "User-Accessible USB Ports": ["AllOn"],
     "iDRAC Direct USB Port": ["On"],
     "Embedded NICs 1-4": ["Enabled"],
@@ -398,13 +427,14 @@ const PRELOADED_ENUMS = {
     "Slot 21": ["Enabled"],
     "Auto-Discovery Bifurcation": ["PlatformDefault"],
 
-    // Serial Communication
+    // ── Serial Communication ──
     "Serial Communication": ["Off"],
     "Serial Port Address": ["Com1"],
     "External Serial Connector": ["Serial1"],
+    "Failsafe Baud Rate": ["115200"],
     "Remote Terminal Type": ["Vt100Vt220"],
 
-    // System Profile
+    // ── System Profile ──
     "System Profile": ["PerfPerWattOptimizedDapc"],
     "CPU Power Management": ["SysDbpm"],
     "Memory Frequency": ["MaxPerf"],
@@ -413,6 +443,7 @@ const PRELOADED_ENUMS = {
     "C1E": ["Enabled"],
     "C-States": ["Enabled"],
     "Memory Patrol Scrub": ["Standard"],
+    "Memory Refresh Rate": ["1x"],
     "Dynamic Load Line Switch": ["Enabled"],
     "Latency-Optimized Mode": ["Disabled"],
     "Energy-Efficient Policy": ["LowPower", "BalancedPerformance"],
@@ -422,14 +453,17 @@ const PRELOADED_ENUMS = {
     "PCI ASPM L1 Link Power Management": ["Enabled"],
     "Workload Configuration": ["Balance"],
 
-    // System Security
+    // ── System Security ──
     "AES-NI": ["Enabled"],
     "SMM Security Mitigation": ["Enabled"],
     "Strong Password": ["Disabled"],
     "Password Rotation": ["Disabled"],
+    "Maximum Password Age": ["60"],
+    "Password History": ["4"],
     "Password Status": ["Unlocked"],
     "TPM Security": ["On"],
     "TPM Information": ["Type: 2.0 NTC", "Type: 2.0 STM"],
+    "TPM Firmware": ["7.2.3.1", "9.512.0.0"],
     "TPM Hierarchy": ["Enabled"],
     "TPM PPI Bypass Provision": ["Disabled"],
     "TPM PPI Bypass Clear": ["Disabled"],
@@ -438,9 +472,11 @@ const PRELOADED_ENUMS = {
     "Memory Encryption": ["Disabled", "MultipleKeys"],
     "Global Memory Integrity": ["Disabled"],
     "Intel Trust Domain Extensions (TDX)": ["Disabled", "Enabled"],
+    "TME-MT / TDX Key Split": ["1"],
     "TDX Secure Arbitration Mode (SEAM) Loader": ["Disabled", "Enabled"],
     "Intel SGX": ["Off", "On"],
     "SGX Package Info In-Band Access": ["Off"],
+    "PRMRR Size": ["2G"],
     "SGX QoS": ["Enabled"],
     "Owner Epochs": ["UserManualEpoch"],
     "Enable Writes to SGXLEPUBKEYHASH from OS/SW": ["Enabled"],
@@ -454,12 +490,12 @@ const PRELOADED_ENUMS = {
     "Secure Boot Mode": ["DeployedMode"],
     "UEFI CA Certificate Scope": ["DeviceFirmwareAndOs"],
 
-    // Redundant OS
+    // ── Redundant OS ──
     "Redundant OS Location": ["None"],
     "Redundant OS State": ["Visible"],
     "Redundant OS Boot": ["Disabled"],
 
-    // Miscellaneous
+    // ── Miscellaneous ──
     "Time Zone": ["LOCAL"],
     "Daylight Saving Time": ["Disabled"],
     "Keyboard NumLock": ["On"],
@@ -468,33 +504,42 @@ const PRELOADED_ENUMS = {
     "Power Cycle Request": ["None"],
     "ACPI FPDT": ["Disabled"],
 
-    // iDRAC Network
+    // ── iDRAC Network ──
     "Enable NIC": ["Enabled"],
     "NIC Selection": ["Dedicated"],
     "Failover Network": ["None"],
     "Link Tuning": ["Autoneg"],
     "Auto Dedicated NIC": ["Disabled"],
+    "Network Speed (Mbps)": ["1000"],
     "Active NIC Interface": ["Dedicated"],
     "Duplex Mode": ["Full"],
 
-    // IPv4
+    // ── IPv4 ──
     "Enable IPv4": ["Enabled"],
     "Enable DHCP": ["Disabled", "Enabled"],
+    "Static IP Address": ["192.168.58.10", "192.168.0.120", "100.71.236.34"],
+    "Static Gateway": ["192.168.58.1", "192.168.0.1", "100.71.236.254"],
+    "Static Subnet Mask": ["255.255.255.0"],
     "Use DHCP to Obtain DNS Server Addresses": ["Disabled", "Enabled"],
+    "Static Preferred DNS Server": ["0.0.0.0", "100.64.0.111"],
+    "Static Alternate DNS Server": ["0.0.0.0"],
 
-    // IPv6
+    // ── IPv6 ──
     "Enable IPv6": ["Enabled"],
     "Address Generation Mode": ["StablePrivacy"],
     "Enable Auto-Configuration": ["Enabled"],
+    "Static Prefix Length": ["64"],
     "Use DHCPv6 to Obtain DNS Server Addresses": ["Enabled"],
 
-    // VLAN / Common
+    // ── VLAN / Common ──
     "Enable VLAN ID": ["Disabled"],
+    "Priority": ["0"],
     "Register iDRAC on DNS": ["Disabled"],
     "DNS iDRAC Name": ["idrac-1234567"],
     "Auto-Configure Domain Name": ["Enabled"],
+    "Static DNS Domain Name": ["StablePrivacy"],
 
-    // IPMI / Alerts
+    // ── IPMI / Alerts ──
     "Enable IPMI over LAN": ["Enabled", "Disabled"],
     "Channel Privilege Level Limit": ["Administrator"],
     "Enable Alert Destination 1": ["Disabled"],
@@ -507,7 +552,7 @@ const PRELOADED_ENUMS = {
     "Enable Alert Destination 8": ["Disabled"],
     "Community String": ["public"],
 
-    // Media & USB
+    // ── Media & USB ──
     "Virtual Media Status": ["AutoAttach"],
     "USB Management Port Mode": ["iDRAC Direct Only"],
     "USB Server Configuration Profile (SCP)": [
@@ -515,34 +560,42 @@ const PRELOADED_ENUMS = {
         "Enabled while server has default credential settings only"
     ],
 
-    // Lifecycle Controller
+    // ── Lifecycle Controller ──
     "Lifecycle Controller": ["Enabled"],
     "Collect System Inventory on Restart": ["Enabled"],
 
-    // Power
+    // ── Power ──
     "Power Cap Policy": ["Disabled"],
+    "Maximum Power Cap (W)": ["429", "450", "460", "467"],
+    "Minimum Power Cap (W)": ["284", "300", "313", "317"],
+    "Power Cap (W)": ["32767"],
     "Redundancy Policy": ["Not Redundant"],
 
-    // Thermal
+    // ── Thermal ──
     "Thermal Profile": ["Default Thermal Profile Settings"],
     "Fan Speed Offset": ["Off"],
+    "Minimum Fan Speed": ["255"],
 
-    // User Configuration
+    // ── System Location ──
+    "Rack Slot": ["0"],
+    "Size of Managed System (U)": ["2"],
+
+    // ── User Configuration ──
+    "User ID": ["2"],
     "Enable User": ["Enabled"],
     "User Name": ["root"],
     "LAN User Privilege": ["Administrator"],
     "Serial Port User Privilege": ["Administrator"],
 
-    // OS to iDRAC Pass-Through
+    // ── OS to iDRAC Pass-Through / Remote Enablement ──
     "LOM Pass-Through Configuration": ["Disabled"],
-    "USB Pass-Through Configuration": ["Enabled"],
-
-    // Remote Enablement
+    "USB Pass-Through Configuration": ["Enabled", "Disabled"],
+    "USB NIC IP Address": ["169.254.1.1"],
     "Enable Auto-Discovery": ["Off"]
 };
 
 /* =========================================================
-   已知參數清單（用於骨架顯示）
+   已知參數清單（骨架顯示用）
    ========================================================= */
 const KNOWN_PARAMS = [
     // System Information
@@ -703,11 +756,10 @@ const KNOWN_PARAMS = [
     "USB NIC IP Address", "Enable Auto-Discovery", "Provisioning Server"
 ];
 
-/* 去重並依長度排序（長者優先，確保前綴匹配正確） */
 const KNOWN_PARAM_SET = Array.from(new Set(KNOWN_PARAMS));
 const SORTED_PARAMS   = [...KNOWN_PARAM_SET].sort((a, b) => b.length - a.length);
 
-/* 分類標題（精確比對） */
+/* 分類標題 */
 const SECTION_TITLES = new Set([
     "System Setup", "System BIOS", "System Information", "Memory Settings",
     "Memory Map Out", "Processor Settings", "Processor 0", "Processor 1",
@@ -726,17 +778,12 @@ const SECTION_TITLES = new Set([
     "NVMe-oF Subsystem Settings"
 ]);
 
-/* 動態編號型標題（PXE Device 1 Settings、NVMe-oF Subsystem 1 Settings...） */
 const DYN_SECTION_RE = /^(?:DIMM Slot|PXE Device|HTTP Device|iSCSI Device|NVMe-oF Subsystem|Connection)\s*\d+\s+Settings$/;
-
-/* 動態編號型參數（DIMM Slot 0Enabled、PXE Device 1Enabled、Slot 21Enabled...） */
-const DYN_PARAM_RE = /^((?:DIMM Slot|PXE Device|HTTP Device|iSCSI Device|NVMe-oF Subsystem|Connection|Slot)\s*\d+)(.+)$/;
-
-/* Alert Destination 動態編號 */
-const ALERT_RE = /^((?:Enable Alert Destination|Alert Destination)\s*[1-8])(\d+\.\d+\.\d+\.\d+|.*)$/;
+const DYN_PARAM_RE   = /^((?:DIMM Slot|PXE Device|HTTP Device|iSCSI Device|NVMe-oF Subsystem|Connection|Slot)\s*\d+)(.+)$/;
+const ALERT_RE       = /^((?:Enable Alert Destination|Alert Destination)\s*[1-8])(\d+\.\d+\.\d+\.\d+|.*)$/;
 
 /* =========================================================
-   初始化枚舉 Map（先載入預置值，之後解析會持續累積）
+   初始化枚舉 Map
    ========================================================= */
 const paramEnumMap = new Map();
 Object.entries(PRELOADED_ENUMS).forEach(([param, values]) => {
@@ -770,7 +817,7 @@ parseBtn.addEventListener('click', () => {
     }
     currentBaseFileName = 'Pasted_System_Setup';
     fileNameSpan.textContent = '（貼上內容）';
-    doParse(txt, '貼上內容');
+    doParse(txt);
 });
 
 pasteInput.addEventListener('keydown', e => {
@@ -793,7 +840,7 @@ function handleFile(file) {
     reader.onload = function (e) {
         currentBaseFileName = file.name.replace(/\.[^/.]+$/, '') || 'System_Setup';
         fileNameSpan.textContent = file.name;
-        doParse(e.target.result, file.name);
+        doParse(e.target.result);
     };
     reader.readAsText(file, 'UTF-8');
 }
@@ -820,7 +867,7 @@ function doParse(text) {
         return;
     }
 
-    // 學習本次 Log 中的枚舉值（累積到 paramEnumMap）
+    // 學習本次 Log 中的枚舉值（累積，取聯集）
     rows.forEach(r => {
         if (r.type === 'data') learnEnum(r.param, r.value);
     });
@@ -836,7 +883,6 @@ function doParse(text) {
     renderRows(currentRows);
 }
 
-/* 統計目前累積的候選值總數 */
 function countEnumEntries() {
     let n = 0;
     paramEnumMap.forEach(s => { n += s.size; });
@@ -849,7 +895,6 @@ function countEnumEntries() {
 function parseSystemSetup(text) {
     const lines = text.split(/\r?\n/);
 
-    // 尋找起點：System Setup 後緊接 System BIOS
     let startIdx = -1;
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].trim() !== 'System Setup') continue;
@@ -867,14 +912,13 @@ function parseSystemSetup(text) {
         const line = lines[i].replace(/\r/g, '').trim();
         if (!line) continue;
 
-        // 結束標記（頁尾）
         if (/^iDRAC\s+v[\d.]/i.test(line)) break;
         if (/^©/.test(line)) break;
 
         const parsed = parseSingleLine(line);
         if (!parsed) continue;
 
-        // 略過空值「預告行」：下一行是同名參數的有值行
+        // 略過「空值預告行」：下一行是同名參數的有值行
         if (parsed.type === 'data' && parsed.value === '') {
             let k = i + 1;
             while (k < lines.length && lines[k].trim() === '') k++;
@@ -896,35 +940,28 @@ function parseSystemSetup(text) {
    單行解析
    ========================================================= */
 function parseSingleLine(line) {
-    /* 1. 精確分類標題 */
     if (SECTION_TITLES.has(line)) {
         return { type: 'section', text: line, level: sectionLevel(line) };
     }
-
-    /* 2. 動態編號型標題 */
     if (DYN_SECTION_RE.test(line)) {
         return { type: 'section', text: line, level: 3 };
     }
 
-    /* 3. 動態編號型參數 */
     let m = line.match(DYN_PARAM_RE);
     if (m && m[2].trim() !== '') {
         return { type: 'data', param: m[1].trim(), value: m[2].trim() };
     }
 
-    /* 4. 已知參數最長前綴 */
     const hit = matchKnownParam(line);
     if (hit !== null) {
         return { type: 'data', param: hit, value: line.slice(hit.length).trim() };
     }
 
-    /* 5. Alert Destination 動態編號 */
     m = line.match(ALERT_RE);
     if (m) {
         return { type: 'data', param: m[1].trim(), value: m[2].trim() };
     }
 
-    /* 6. Fallback 規則 */
     const fallbackPatterns = [
         /^(.*?)(\(Not captured\))$/,
         /^(.*?)(Enabled|Disabled|On|Off|Auto|None|Full|Half|Standard|Linear|Normal|Balance|Public|public)$/,
@@ -938,17 +975,14 @@ function parseSingleLine(line) {
         }
     }
 
-    /* 7. 其餘視為分類標題 */
     return { type: 'section', text: line, level: 3 };
 }
 
-/* 最長前綴比對 */
 function matchKnownParam(line) {
     for (let i = 0; i < SORTED_PARAMS.length; i++) {
         const p = SORTED_PARAMS[i];
         if (line.startsWith(p)) {
             const rest = line.slice(p.length);
-            // 避免 "VLAN" 吃掉 "VLANXxx" 之類誤切
             if (rest && /^[a-z]/.test(rest) && /[A-Za-z]$/.test(p)) continue;
             return p;
         }
@@ -956,7 +990,6 @@ function matchKnownParam(line) {
     return null;
 }
 
-/* 分類標題層級 */
 function sectionLevel(text) {
     if (text === 'System Setup') return 1;
     if (text === 'System BIOS' || text === 'iDRAC Settings') return 2;
@@ -964,7 +997,8 @@ function sectionLevel(text) {
 }
 
 /* =========================================================
-   枚舉值學習（累積，跨 Log）
+   枚舉值學習（放寬版：允許版本號、十六進位、IP、數值）
+   仍排除每台機器唯一的識別碼
    ========================================================= */
 function learnEnum(param, value) {
     if (!param || !value) return;
@@ -979,16 +1013,17 @@ function learnEnum(param, value) {
     set.add(value);
 }
 
-/* 判斷是否適合作為候選 enum */
 function looksLikeEnum(v) {
     if (!v) return false;
     if (v.length > 64) return false;
-    // 排除 IPv6 / MAC / NQN / 唯一識別碼等
-    if (/::/.test(v)) return false;
-    if (/^nqn\./i.test(v)) return false;
-    if (/^[0-9a-f:.\-]+$/i.test(v) && v.length > 10) return false;
-    // 必須以字母開頭，僅允許常見字元
-    if (!/^[A-Za-z][A-Za-z0-9 ._()\/\-:]*$/.test(v)) return false;
+
+    // 唯一識別碼：不納入候選值
+    if (/^nqn\./i.test(v)) return false;                                                 // NVMe NQN
+    if (/^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i.test(v)) return false;                         // MAC
+    if (/^fe80:/i.test(v)) return false;                                                 // IPv6 Link Local
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) return false; // UUID
+    if (/^::/.test(v) || /::$/.test(v)) return false;                                    // IPv6 通配
+
     return true;
 }
 
@@ -1036,7 +1071,6 @@ function renderRows(rows) {
     tableContainer.innerHTML = html;
 }
 
-/* 左側欄：參數名稱 + 已知候選值 */
 function buildParamLabel(param) {
     let html = escapeHtml(param);
     const set = paramEnumMap.get(param);
@@ -1048,7 +1082,7 @@ function buildParamLabel(param) {
 }
 
 /* =========================================================
-   「尚未 Parse 前」的骨架表格（右側全部為 ?）
+   骨架表格（未解析前）
    ========================================================= */
 function renderSkeleton() {
     if (currentRows.length > 0) return;
@@ -1076,12 +1110,9 @@ function renderSkeleton() {
     html += `</tbody></table>`;
     tableContainer.innerHTML = html;
 
-    showNotice('尚未載入任何 Log — 下方為已知參數骨架，數值皆顯示為「?」。左側［］內為預置與累積的候選值。');
+    showNotice('尚未載入任何 Log — 下方為已知參數骨架，數值皆顯示為「?」。左側［］內為四組 Log 合併後的候選值。');
 }
 
-/* =========================================================
-   提示列
-   ========================================================= */
 function showNotice(msg, isError) {
     noticeContainer.innerHTML = `<div class="notice-bar${isError ? ' error' : ''}">${escapeHtml(msg)}</div>`;
 }
@@ -1103,9 +1134,6 @@ searchInput.addEventListener('input', function () {
     });
 });
 
-/* =========================================================
-   取得目前（過濾後）資料列
-   ========================================================= */
 function getFilteredRows() {
     const filter = searchInput.value.trim().toLowerCase();
     if (!filter) return currentRows;
