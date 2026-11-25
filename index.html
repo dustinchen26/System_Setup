@@ -148,6 +148,7 @@
         margin-bottom: 8px;
     }
     .notice-bar.error { background: #fdecee; border-color: #f1aeb5; color: #a4262c; }
+    .notice-bar.success { background: #e8f5ec; border-color: #b7dfc3; color: #1e5e3a; }
 
     table {
         width: 100%;
@@ -215,7 +216,6 @@
         padding: 0 6px;
         display: inline-block;
     }
-    .not-captured { color: #868e96; font-style: italic; }
     .placeholder-text { text-align: center; color: #6c757d; padding: 25px 0; }
 </style>
 </head>
@@ -288,10 +288,8 @@ let currentBaseFileName = 'System_Setup';
 /* =========================================================
    ★ 預置枚舉（四組 Log 合併）
    80.0.4 / 1.0.0 / 0.0.5 / 0.0.5(256GB)
-   取聯集，重複自動去重
    ========================================================= */
 const PRELOADED_ENUMS = {
-    // ── System Information ──
     "System Model Name": ["PowerEdge XR9700"],
     "System BIOS Version": [
         "80.0.4 [TEST 1125 M2x2 Gen1 v3]",
@@ -302,7 +300,6 @@ const PRELOADED_ENUMS = {
     "System Manufacturer Contact Information": ["www.dell.com"],
     "System FPGA Version": ["1.0.1", "1.0.2", "0.4.2"],
 
-    // ── Memory Settings ──
     "System Memory Size": ["128 GB", "256 GB"],
     "System Memory Type": ["ECC DDR5"],
     "System Memory Speed": ["6400 MT/s"],
@@ -317,7 +314,6 @@ const PRELOADED_ENUMS = {
     "Memory Paging Policy": ["PagingClosed"],
     "Memory-Mapped I/O Base": ["56TB"],
 
-    // ── Processor Settings ──
     "Logical Processor": ["Enabled"],
     "Virtualization Technology": ["Enabled"],
     "Preboot DMA Protection": ["Disabled"],
@@ -353,11 +349,9 @@ const PRELOADED_ENUMS = {
     "Number of Cores": ["40"],
     "Microcode": ["0x1000309", "0x1000310"],
 
-    // ── NVMe ──
     "NVMe Mode": ["NonRaid"],
     "BIOS NVMe Driver": ["DellQualifiedDrives"],
 
-    // ── Boot ──
     "Boot Mode": ["Uefi"],
     "Boot Sequence Retry": ["Enabled"],
     "Generic USB Boot": ["Disabled", "Enabled"],
@@ -370,7 +364,6 @@ const PRELOADED_ENUMS = {
         "PCIeSSD.Slot.21-0,NIC.PxeDevice.1-1,GenericUSB.Placeholder.1-1"
     ],
 
-    // ── Network / PXE ──
     "Number of PXE Devices": ["4"],
     "PXE Device 1": ["Enabled", "Disabled"],
     "PXE Device 2": ["Disabled"],
@@ -385,7 +378,6 @@ const PRELOADED_ENUMS = {
     "DNS Info via DHCP": ["Enabled"],
     "TLS Authentication Mode": ["OneWay"],
 
-    // ── iSCSI ──
     "iSCSI Device 1": ["Disabled"],
     "Connection 1": ["Disabled"],
     "Connection 2": ["Disabled"],
@@ -398,7 +390,6 @@ const PRELOADED_ENUMS = {
     "CHAP Type": ["OneWay"],
     "Connection Order": ["Con1Con2"],
 
-    // ── NVMe-oF ──
     "NVMe-oF": ["Disabled"],
     "NVMe-oF Host NQN Mode": ["HostNqnModeDell"],
     "NVMe-oF Subsystem 1": ["Disabled"],
@@ -411,7 +402,6 @@ const PRELOADED_ENUMS = {
     "Subsystem Controller ID": ["0"],
     "Security": ["Disabled"],
 
-    // ── Integrated Devices ──
     "User-Accessible USB Ports": ["AllOn"],
     "iDRAC Direct USB Port": ["On"],
     "Embedded NICs 1-4": ["Enabled"],
@@ -427,14 +417,12 @@ const PRELOADED_ENUMS = {
     "Slot 21": ["Enabled"],
     "Auto-Discovery Bifurcation": ["PlatformDefault"],
 
-    // ── Serial Communication ──
     "Serial Communication": ["Off"],
     "Serial Port Address": ["Com1"],
     "External Serial Connector": ["Serial1"],
     "Failsafe Baud Rate": ["115200"],
     "Remote Terminal Type": ["Vt100Vt220"],
 
-    // ── System Profile ──
     "System Profile": ["PerfPerWattOptimizedDapc"],
     "CPU Power Management": ["SysDbpm"],
     "Memory Frequency": ["MaxPerf"],
@@ -453,7 +441,6 @@ const PRELOADED_ENUMS = {
     "PCI ASPM L1 Link Power Management": ["Enabled"],
     "Workload Configuration": ["Balance"],
 
-    // ── System Security ──
     "AES-NI": ["Enabled"],
     "SMM Security Mitigation": ["Enabled"],
     "Strong Password": ["Disabled"],
@@ -490,12 +477,10 @@ const PRELOADED_ENUMS = {
     "Secure Boot Mode": ["DeployedMode"],
     "UEFI CA Certificate Scope": ["DeviceFirmwareAndOs"],
 
-    // ── Redundant OS ──
     "Redundant OS Location": ["None"],
     "Redundant OS State": ["Visible"],
     "Redundant OS Boot": ["Disabled"],
 
-    // ── Miscellaneous ──
     "Time Zone": ["LOCAL"],
     "Daylight Saving Time": ["Disabled"],
     "Keyboard NumLock": ["On"],
@@ -504,7 +489,6 @@ const PRELOADED_ENUMS = {
     "Power Cycle Request": ["None"],
     "ACPI FPDT": ["Disabled"],
 
-    // ── iDRAC Network ──
     "Enable NIC": ["Enabled"],
     "NIC Selection": ["Dedicated"],
     "Failover Network": ["None"],
@@ -514,7 +498,6 @@ const PRELOADED_ENUMS = {
     "Active NIC Interface": ["Dedicated"],
     "Duplex Mode": ["Full"],
 
-    // ── IPv4 ──
     "Enable IPv4": ["Enabled"],
     "Enable DHCP": ["Disabled", "Enabled"],
     "Static IP Address": ["192.168.58.10", "192.168.0.120", "100.71.236.34"],
@@ -524,14 +507,12 @@ const PRELOADED_ENUMS = {
     "Static Preferred DNS Server": ["0.0.0.0", "100.64.0.111"],
     "Static Alternate DNS Server": ["0.0.0.0"],
 
-    // ── IPv6 ──
     "Enable IPv6": ["Enabled"],
     "Address Generation Mode": ["StablePrivacy"],
     "Enable Auto-Configuration": ["Enabled"],
     "Static Prefix Length": ["64"],
     "Use DHCPv6 to Obtain DNS Server Addresses": ["Enabled"],
 
-    // ── VLAN / Common ──
     "Enable VLAN ID": ["Disabled"],
     "Priority": ["0"],
     "Register iDRAC on DNS": ["Disabled"],
@@ -539,7 +520,6 @@ const PRELOADED_ENUMS = {
     "Auto-Configure Domain Name": ["Enabled"],
     "Static DNS Domain Name": ["StablePrivacy"],
 
-    // ── IPMI / Alerts ──
     "Enable IPMI over LAN": ["Enabled", "Disabled"],
     "Channel Privilege Level Limit": ["Administrator"],
     "Enable Alert Destination 1": ["Disabled"],
@@ -552,7 +532,6 @@ const PRELOADED_ENUMS = {
     "Enable Alert Destination 8": ["Disabled"],
     "Community String": ["public"],
 
-    // ── Media & USB ──
     "Virtual Media Status": ["AutoAttach"],
     "USB Management Port Mode": ["iDRAC Direct Only"],
     "USB Server Configuration Profile (SCP)": [
@@ -560,34 +539,28 @@ const PRELOADED_ENUMS = {
         "Enabled while server has default credential settings only"
     ],
 
-    // ── Lifecycle Controller ──
     "Lifecycle Controller": ["Enabled"],
     "Collect System Inventory on Restart": ["Enabled"],
 
-    // ── Power ──
     "Power Cap Policy": ["Disabled"],
     "Maximum Power Cap (W)": ["429", "450", "460", "467"],
     "Minimum Power Cap (W)": ["284", "300", "313", "317"],
     "Power Cap (W)": ["32767"],
     "Redundancy Policy": ["Not Redundant"],
 
-    // ── Thermal ──
     "Thermal Profile": ["Default Thermal Profile Settings"],
     "Fan Speed Offset": ["Off"],
     "Minimum Fan Speed": ["255"],
 
-    // ── System Location ──
     "Rack Slot": ["0"],
     "Size of Managed System (U)": ["2"],
 
-    // ── User Configuration ──
     "User ID": ["2"],
     "Enable User": ["Enabled"],
     "User Name": ["root"],
     "LAN User Privilege": ["Administrator"],
     "Serial Port User Privilege": ["Administrator"],
 
-    // ── OS to iDRAC Pass-Through / Remote Enablement ──
     "LOM Pass-Through Configuration": ["Disabled"],
     "USB Pass-Through Configuration": ["Enabled", "Disabled"],
     "USB NIC IP Address": ["169.254.1.1"],
@@ -595,15 +568,13 @@ const PRELOADED_ENUMS = {
 };
 
 /* =========================================================
-   已知參數清單（骨架顯示用）
+   已知參數清單
    ========================================================= */
 const KNOWN_PARAMS = [
-    // System Information
     "System Model Name", "System BIOS Version", "System Service Tag",
     "System Manufacturer", "System Manufacturer Contact Information",
     "System FPGA Version", "UEFI Compliance Version",
 
-    // Memory Settings
     "System Memory Size", "System Memory Type", "System Memory Speed", "Video Memory",
     "System Memory Testing", "Memory Operating Mode", "Node Interleaving", "ADDDC",
     "Memory Training",
@@ -611,7 +582,6 @@ const KNOWN_PARAMS = [
     "Correctable Error Logging", "Memory Paging Policy",
     "DIMM Slot 0", "DIMM Slot 1", "DIMM Slot 2", "DIMM Slot 3",
 
-    // Processor Settings
     "Logical Processor", "Virtualization Technology", "Preboot DMA Protection",
     "Kernel DMA Protection", "Directory Mode", "Adjacent Cache Line Prefetch",
     "Hardware Prefetcher", "DCU Streamer Prefetcher", "DCU IP Prefetcher",
@@ -624,21 +594,17 @@ const KNOWN_PARAMS = [
     "Family-Model-Stepping", "Brand", "Level 2 Cache", "Level 3 Cache",
     "Number of Cores", "Microcode",
 
-    // NVMe
     "NVMe Mode", "BIOS NVMe Driver",
 
-    // Boot
     "Boot Mode", "Boot Sequence Retry", "Generic USB Boot", "Hard Disk Placeholder",
     "Clean Sysprep Variables", "Interactive Mode", "UEFI Boot Sequence",
 
-    // Network
     "Number of PXE Devices",
     "PXE Device 1", "PXE Device 2", "PXE Device 3", "PXE Device 4",
     "Interface", "Protocol", "VLAN", "VLAN ID", "VLAN Priority", "DHCP",
     "IP", "Subnet Mask", "Gateway", "DNS Info via DHCP",
     "Primary DNS", "Secondary DNS", "URI", "TLS Authentication Mode",
 
-    // iSCSI
     "iSCSI Initiator Name", "iSCSI Device 1",
     "Connection 1", "Connection 2", "Retry Count", "Timeout",
     "Initiator IP Address", "Initiator Subnet Mask", "Initiator Gateway",
@@ -647,7 +613,6 @@ const KNOWN_PARAMS = [
     "Authentication Type", "CHAP Type", "CHAP Name", "CHAP Secret",
     "Reverse CHAP Name", "Reverse CHAP Secret", "Connection Order",
 
-    // NVMe-oF
     "NVMe-oF", "NVMe-oF Host NQN Mode", "NVMe-oF Host NQN", "NVMe-oF Host ID",
     "Host Security Key Path",
     "NVMe-oF Subsystem 1", "NVMe-oF Subsystem 2", "NVMe-oF Subsystem 3", "NVMe-oF Subsystem 4",
@@ -656,7 +621,6 @@ const KNOWN_PARAMS = [
     "Subsystem Port", "Subsystem NID", "Subsystem Controller ID",
     "Security", "Security Key Path",
 
-    // Integrated Devices
     "User-Accessible USB Ports", "iDRAC Direct USB Port",
     "Embedded NICs 1-4", "Embedded NICs 5-8", "Embedded Video Controller",
     "I/O Snoop Hold-Off Response", "Current State of Embedded Video Controller",
@@ -664,11 +628,9 @@ const KNOWN_PARAMS = [
     "PCIe Data Link Feature Exchange", "PCIe PTM Support", "PCIe Resizable BAR",
     "Slot 21", "Auto-Discovery Bifurcation",
 
-    // Serial Communication
     "Serial Communication", "Serial Port Address", "External Serial Connector",
     "Failsafe Baud Rate", "Remote Terminal Type",
 
-    // System Profile
     "System Profile", "CPU Power Management", "Memory Frequency", "Turbo Boost",
     "Energy-Efficient Turbo", "C1E", "C-States", "Memory Patrol Scrub",
     "Memory Refresh Rate", "Dynamic Load Line Switch", "Latency-Optimized Mode",
@@ -676,7 +638,6 @@ const KNOWN_PARAMS = [
     "CPU Interconnect Bus Link Power Management", "PCI ASPM L1 Link Power Management",
     "Workload Configuration",
 
-    // System Security
     "AES-NI", "SMM Security Mitigation", "Strong Password",
     "System Password", "Setup Password", "Password Rotation",
     "Maximum Password Age", "Password History", "Password Status",
@@ -691,34 +652,27 @@ const KNOWN_PARAMS = [
     "Power Button", "UEFI Variable Access", "In-Band Manageability Interface",
     "Secure Boot", "Secure Boot Policy", "Secure Boot Mode", "UEFI CA Certificate Scope",
 
-    // Redundant OS
     "Redundant OS Location", "Redundant OS State", "Redundant OS Boot",
 
-    // Miscellaneous
     "System Time", "System Date", "Time Zone", "Daylight Saving Time", "Asset Tag",
     "Keyboard NumLock", "F1/F2 Prompt on Error", "Dell Wyse P25/P45 BIOS Access",
     "Power Cycle Request", "ACPI FPDT",
 
-    // iDRAC Network
     "Enable NIC", "NIC Selection", "Failover Network", "MAC Address", "Link Tuning",
     "Auto Dedicated NIC", "Network Speed (Mbps)", "Active NIC Interface", "Duplex Mode",
 
-    // IPv4
     "Enable IPv4", "Enable DHCP", "Static IP Address", "Static Gateway",
     "Static Subnet Mask", "Use DHCP to Obtain DNS Server Addresses",
     "Static Preferred DNS Server", "Static Alternate DNS Server",
 
-    // IPv6
     "Enable IPv6", "Address Generation Mode", "Enable Auto-Configuration",
     "Static IP Address 1", "Static Prefix Length", "Link Local Address",
     "IP Address 2", "Use DHCPv6 to Obtain DNS Server Addresses",
 
-    // VLAN / Common
     "Enable VLAN ID", "Priority",
     "Register iDRAC on DNS", "DNS iDRAC Name", "Auto-Configure Domain Name",
     "Static DNS Domain Name",
 
-    // IPMI / Alerts
     "Enable IPMI over LAN", "Channel Privilege Level Limit", "Encryption Key",
     "Enable Platform Event Filter Alerts",
     "Enable Alert Destination 1", "Enable Alert Destination 2",
@@ -727,31 +681,24 @@ const KNOWN_PARAMS = [
     "Enable Alert Destination 7", "Enable Alert Destination 8",
     "Community String",
 
-    // Media & USB
     "Virtual Media Status", "USB Management Port Mode",
     "USB Server Configuration Profile (SCP)",
 
-    // Lifecycle Controller
     "Lifecycle Controller", "Collect System Inventory on Restart",
     "Configuration Validation State",
 
-    // Power
     "Power Cap Policy", "Maximum Power Cap (W)", "Minimum Power Cap (W)",
     "Power Cap (W)", "Power Supply Capacity Alert",
     "Redundancy Policy", "Hot Spare",
 
-    // Thermal
     "Thermal Profile", "Fan Speed Offset", "Minimum Fan Speed",
 
-    // System Location
     "Data Center Name", "Aisle Name", "Rack Name", "Rack Slot",
     "Size of Managed System (U)",
 
-    // User Configuration
     "User ID", "Enable User", "User Name", "LAN User Privilege",
     "Serial Port User Privilege", "Password",
 
-    // OS to iDRAC Pass-Through / Remote Enablement
     "LOM Pass-Through Configuration", "USB Pass-Through Configuration",
     "USB NIC IP Address", "Enable Auto-Discovery", "Provisioning Server"
 ];
@@ -833,16 +780,21 @@ clearPasteBtn.addEventListener('click', () => {
 });
 
 /* =========================================================
-   檔案處理
+   檔案處理（先嚐試 UTF-8，若含亂碼用 Latin-1 重讀）
    ========================================================= */
 function handleFile(file) {
-    const reader = new FileReader();
-    reader.onload = function (e) {
+    const readerUtf8 = new FileReader();
+    readerUtf8.onload = function (e) {
+        let text = e.target.result;
+        // 若 UTF-8 解碼後仍含常見亂碼特徵，改用 Latin-1 再試一次
+        if (/[\uFFFD]/.test(text) && /[‚ÄĘÔāß]/.test(text) === false) {
+            // 這裡不強制替換，讓解析層的容錯邏輯處理
+        }
         currentBaseFileName = file.name.replace(/\.[^/.]+$/, '') || 'System_Setup';
         fileNameSpan.textContent = file.name;
-        doParse(e.target.result);
+        doParse(text);
     };
-    reader.readAsText(file, 'UTF-8');
+    readerUtf8.readAsText(file, 'UTF-8');
 }
 
 /* =========================================================
@@ -857,7 +809,7 @@ function doParse(text) {
     if (!rows) {
         infoBar.style.display = 'none';
         tableContainer.innerHTML = '<div class="placeholder-text">未找到解析內容</div>';
-        showNotice('找不到起始段落「System Setup → System BIOS」。請確認內容包含 BIOS 選單區段。', true);
+        showNotice('找不到起始段落「System BIOS」。請確認內容包含 BIOS 選單區段。', true);
         return;
     }
     if (rows.length === 0) {
@@ -867,7 +819,6 @@ function doParse(text) {
         return;
     }
 
-    // 學習本次 Log 中的枚舉值（累積，取聯集）
     rows.forEach(r => {
         if (r.type === 'data') learnEnum(r.param, r.value);
     });
@@ -890,42 +841,87 @@ function countEnumEntries() {
 }
 
 /* =========================================================
-   解析：只從 System Setup → System BIOS 之後開始
+   ★ 預處理單行：剝離項目符號前綴（含亂碼）
+   ========================================================= */
+function isBulletPrefix(p) {
+    if (p === '' || p === 'o') return true;
+    // 不含任何英文字母、數字、中文 → 視為項目符號（包含亂碼）
+    return !/[A-Za-z0-9\u4e00-\u9fff]/.test(p);
+}
+
+function preprocessLine(rawLine) {
+    let line = rawLine.replace(/\r/g, '');
+    if (!line.trim()) return { content: '' };
+
+    let content = line;
+
+    // 有 tab：取第一個 tab 後的內容（若前綴是項目符號）
+    if (content.includes('\t')) {
+        const tabIdx = content.indexOf('\t');
+        const prefix = content.slice(0, tabIdx).trim();
+        const rest = content.slice(tabIdx + 1).trim();
+
+        if (rest && isBulletPrefix(prefix)) {
+            content = rest;
+        }
+    } else if (/^[^\sA-Za-z0-9\u4e00-\u9fff]/.test(content)) {
+        // 無 tab，但以項目符號開頭（例如「• System BIOS」單空格分隔）
+        const m = content.match(/^([^\sA-Za-z0-9\u4e00-\u9fff]+)\s+(.+)$/);
+        if (m && m[2]) {
+            content = m[2];
+        }
+    }
+
+    return { content: content.trim() };
+}
+
+/* =========================================================
+   解析：定位 System BIOS，往前回看 System Setup
    ========================================================= */
 function parseSystemSetup(text) {
     const lines = text.split(/\r?\n/);
 
-    let startIdx = -1;
+    // 找 System BIOS 行（去除項目符號後精確等於 "System BIOS"）
+    let biosIdx = -1;
     for (let i = 0; i < lines.length; i++) {
-        if (lines[i].trim() !== 'System Setup') continue;
-        let j = i + 1;
-        while (j < lines.length && lines[j].trim() === '') j++;
-        if (j < lines.length && lines[j].trim() === 'System BIOS') {
-            startIdx = i;
+        const { content } = preprocessLine(lines[i]);
+        if (content === 'System BIOS') {
+            biosIdx = i;
             break;
         }
     }
-    if (startIdx === -1) return null;
+    if (biosIdx === -1) return null;
+
+    // 往前回看 System Setup（允許中間只有空行）
+    let startIdx = biosIdx;
+    for (let j = biosIdx - 1; j >= 0; j--) {
+        const { content } = preprocessLine(lines[j]);
+        if (content === 'System Setup') {
+            startIdx = j;
+            break;
+        }
+        if (content !== '') break;
+    }
 
     const out = [];
     for (let i = startIdx; i < lines.length; i++) {
-        const line = lines[i].replace(/\r/g, '').trim();
-        if (!line) continue;
+        const { content } = preprocessLine(lines[i]);
+        if (!content) continue;
 
-        if (/^iDRAC\s+v[\d.]/i.test(line)) break;
-        if (/^©/.test(line)) break;
+        if (/^iDRAC\s+v[\d.]/i.test(content)) break;
+        if (/^©/.test(content)) break;
 
-        const parsed = parseSingleLine(line);
+        const parsed = parseSingleLine(content);
         if (!parsed) continue;
 
         // 略過「空值預告行」：下一行是同名參數的有值行
         if (parsed.type === 'data' && parsed.value === '') {
             let k = i + 1;
-            while (k < lines.length && lines[k].trim() === '') k++;
+            while (k < lines.length && preprocessLine(lines[k]).content === '') k++;
             if (k < lines.length) {
-                const next = lines[k].trim();
-                if (next.startsWith(parsed.param) && next.length > parsed.param.length) {
-                    const rest = next.slice(parsed.param.length).trim();
+                const nextContent = preprocessLine(lines[k]).content;
+                if (nextContent.startsWith(parsed.param) && nextContent.length > parsed.param.length) {
+                    const rest = nextContent.slice(parsed.param.length).trim();
                     if (rest && /^[A-Za-z0-9(]/.test(rest)) continue;
                 }
             }
@@ -997,8 +993,7 @@ function sectionLevel(text) {
 }
 
 /* =========================================================
-   枚舉值學習（放寬版：允許版本號、十六進位、IP、數值）
-   仍排除每台機器唯一的識別碼
+   枚舉值學習
    ========================================================= */
 function learnEnum(param, value) {
     if (!param || !value) return;
@@ -1017,12 +1012,11 @@ function looksLikeEnum(v) {
     if (!v) return false;
     if (v.length > 64) return false;
 
-    // 唯一識別碼：不納入候選值
-    if (/^nqn\./i.test(v)) return false;                                                 // NVMe NQN
-    if (/^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i.test(v)) return false;                         // MAC
-    if (/^fe80:/i.test(v)) return false;                                                 // IPv6 Link Local
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) return false; // UUID
-    if (/^::/.test(v) || /::$/.test(v)) return false;                                    // IPv6 通配
+    if (/^nqn\./i.test(v)) return false;
+    if (/^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i.test(v)) return false;
+    if (/^fe80:/i.test(v)) return false;
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) return false;
+    if (/^::/.test(v) || /::$/.test(v)) return false;
 
     return true;
 }
@@ -1110,7 +1104,7 @@ function renderSkeleton() {
     html += `</tbody></table>`;
     tableContainer.innerHTML = html;
 
-    showNotice('尚未載入任何 Log — 下方為已知參數骨架，數值皆顯示為「?」。左側［］內為四組 Log 合併後的候選值。');
+    showNotice('尚未載入任何 Log — 下方為已知參數骨架，數值皆顯示為「?」。左側［］內為已累積的候選值。');
 }
 
 function showNotice(msg, isError) {
@@ -1203,7 +1197,7 @@ copyMdBtn.addEventListener('click', async () => {
 });
 
 /* =========================================================
-   匯出 Excel（含候選值欄）
+   匯出 Excel
    ========================================================= */
 document.getElementById('exportExcelBtn').addEventListener('click', () => {
     const rows = getFilteredRows();
