@@ -1,763 +1,1232 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIOS / iDRAC System Setup 參數檢視器</title>
-    <!-- 引入 SheetJS 以支援匯出標準 Excel (.xlsx) 檔案 -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Microsoft JhengHei", sans-serif;
-            background-color: #f0f2f5;
-            color: #212529;
-            margin: 0;
-            padding: 12px;
-            font-size: 13px;
-        }
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 14px 18px;
-            border-radius: 6px;
-            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
-        }
-        .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #dee2e6;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
-        }
-        h2 {
-            margin: 0;
-            font-size: 16px;
-            color: #0076ce;
-        }
-        .badge-hint {
-            font-size: 11px;
-            color: #6c757d;
-        }
-        .upload-area {
-            border: 1.5px dashed #0076ce;
-            border-radius: 4px;
-            padding: 10px 15px;
-            text-align: center;
-            background-color: #f8fbff;
-            cursor: pointer;
-            transition: background-color 0.15s;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        .upload-area:hover, .upload-area.dragover {
-            background-color: #e6f2ff;
-        }
-        .upload-area input[type="file"] {
-            display: none;
-        }
-        .upload-btn {
-            background-color: #0076ce;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 3px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        .info-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-            background-color: #e9ecef;
-            padding: 6px 12px;
-            border-radius: 4px;
-            margin-bottom: 8px;
-            font-size: 12px;
-        }
-        .file-meta {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .file-name-display {
-            font-weight: bold;
-            color: #212529;
-        }
-        .file-name-display span {
-            color: #0076ce;
-        }
-        .format-tag {
-            background: #0076ce;
-            color: #fff;
-            padding: 1px 6px;
-            border-radius: 3px;
-            font-size: 11px;
-        }
-        .toolbar-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .action-btn {
-            padding: 4px 10px;
-            border: 1px solid transparent;
-            border-radius: 3px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            transition: background-color 0.15s, border-color 0.15s;
-        }
-        .btn-md {
-            background-color: #ffffff;
-            color: #212529;
-            border-color: #ced4da;
-        }
-        .btn-md:hover {
-            background-color: #f8f9fa;
-            border-color: #adb5bd;
-        }
-        .btn-md.copied {
-            background-color: #198754;
-            color: #ffffff;
-            border-color: #198754;
-        }
-        .btn-excel {
-            background-color: #198754;
-            color: #ffffff;
-        }
-        .btn-excel:hover {
-            background-color: #157347;
-        }
-        .search-box {
-            padding: 4px 8px;
-            border: 1px solid #ced4da;
-            border-radius: 3px;
-            width: 220px;
-            font-size: 12px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-            line-height: 1.25;
-            table-layout: fixed;
-        }
-        th, td {
-            border: 1px solid #dee2e6;
-            padding: 3px 8px;
-            text-align: left;
-            word-break: break-word;
-            vertical-align: middle;
-        }
-        th {
-            background-color: #0076ce;
-            color: white;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 2;
-            padding: 5px 8px;
-        }
-        tr:nth-child(even):not(.sec-lvl-1):not(.sec-lvl-2):not(.sec-lvl-3) {
-            background-color: #f8f9fa;
-        }
-        tr.data-row:hover {
-            background-color: #e8f3fc;
-        }
-        /* 分類階層標題樣式（緊湊版） */
-        tr.sec-lvl-1 td {
-            background-color: #212529;
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 12.5px;
-            padding: 4px 8px;
-        }
-        tr.sec-lvl-2 td {
-            background-color: #495057;
-            color: #ffffff;
-            font-weight: bold;
-            padding: 3px 8px 3px 16px;
-        }
-        tr.sec-lvl-3 td {
-            background-color: #dee2e6;
-            color: #212529;
-            font-weight: 600;
-            padding: 3px 8px 3px 24px;
-        }
-        .param-cell {
-            color: #212529;
-            font-weight: 500;
-        }
-        .val-cell {
-            font-family: Consolas, "Courier New", monospace;
-            color: #0b5ed7;
-        }
-        .empty-value {
-            color: #adb5bd;
-            font-style: italic;
-            font-family: inherit;
-        }
-        .not-captured {
-            color: #868e96;
-            font-style: italic;
-        }
-        .placeholder-text {
-            text-align: center;
-            color: #6c757d;
-            padding: 25px 0;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIOS / iDRAC System Setup 參數檢視器</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+    * { box-sizing: border-box; }
+    body {
+        font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Microsoft JhengHei", sans-serif;
+        background-color: #f0f2f5;
+        color: #212529;
+        margin: 0;
+        padding: 12px;
+        font-size: 13px;
+    }
+    .container {
+        max-width: 1180px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 14px 18px;
+        border-radius: 6px;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+    }
+    .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    h2 { margin: 0; font-size: 16px; color: #0076ce; }
+    .badge-hint { font-size: 11px; color: #6c757d; }
+
+    .upload-area {
+        border: 1.5px dashed #0076ce;
+        border-radius: 4px;
+        padding: 10px 15px;
+        text-align: center;
+        background-color: #f8fbff;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .upload-area:hover, .upload-area.dragover { background-color: #e6f2ff; }
+    .upload-area input[type="file"] { display: none; }
+    .upload-btn {
+        background-color: #0076ce;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .paste-panel {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        padding: 8px 10px;
+        background: #fcfcfd;
+        margin-bottom: 10px;
+    }
+    .paste-panel .paste-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .paste-panel label { font-size: 12px; font-weight: 600; color: #495057; }
+    #pasteInput {
+        width: 100%;
+        min-height: 110px;
+        resize: vertical;
+        border: 1px solid #ced4da;
+        border-radius: 3px;
+        padding: 6px 8px;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 12px;
+        line-height: 1.35;
+        color: #212529;
+        background: #fff;
+    }
+    #pasteInput:focus { outline: 2px solid #a8d1f5; border-color: #0076ce; }
+
+    .info-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        background-color: #e9ecef;
+        padding: 6px 12px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        font-size: 12px;
+    }
+    .file-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .file-name-display { font-weight: bold; color: #212529; }
+    .file-name-display span { color: #0076ce; }
+    .format-tag {
+        background: #0076ce; color: #fff; padding: 1px 6px; border-radius: 3px; font-size: 11px;
+    }
+    .toolbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .action-btn {
+        padding: 4px 10px;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: background-color 0.15s, border-color 0.15s;
+    }
+    .btn-md { background-color: #ffffff; color: #212529; border-color: #ced4da; }
+    .btn-md:hover { background-color: #f8f9fa; border-color: #adb5bd; }
+    .btn-md.copied { background-color: #198754; color: #ffffff; border-color: #198754; }
+    .btn-excel { background-color: #198754; color: #ffffff; }
+    .btn-excel:hover { background-color: #157347; }
+    .btn-primary { background-color: #0076ce; color: #fff; }
+    .btn-primary:hover { background-color: #005fa3; }
+    .btn-danger { background-color: #fff; color: #b02a37; border-color: #e3a0a7; }
+    .btn-danger:hover { background-color: #fdf2f3; }
+    .search-box {
+        padding: 4px 8px; border: 1px solid #ced4da; border-radius: 3px;
+        width: 220px; font-size: 12px;
+    }
+
+    .notice-bar {
+        background: #fff8e1;
+        border: 1px solid #ffe08a;
+        color: #7a5c00;
+        border-radius: 4px;
+        padding: 6px 10px;
+        font-size: 12px;
+        margin-bottom: 8px;
+    }
+    .notice-bar.error { background: #fdecee; border-color: #f1aeb5; color: #a4262c; }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        line-height: 1.25;
+        table-layout: fixed;
+    }
+    th, td {
+        border: 1px solid #dee2e6;
+        padding: 3px 8px;
+        text-align: left;
+        word-break: break-word;
+        vertical-align: middle;
+    }
+    th {
+        background-color: #0076ce;
+        color: white;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        padding: 5px 8px;
+    }
+    tr:nth-child(even):not(.section-header) { background-color: #f8f9fa; }
+    tr.data-row:hover { background-color: #e8f3fc; }
+
+    tr.sec-lvl-1 td {
+        background-color: #212529; color: #fff; font-weight: bold;
+        font-size: 12.5px; padding: 4px 8px;
+    }
+    tr.sec-lvl-2 td {
+        background-color: #495057; color: #fff; font-weight: bold;
+        padding: 3px 8px 3px 16px;
+    }
+    tr.sec-lvl-3 td {
+        background-color: #dee2e6; color: #212529; font-weight: 600;
+        padding: 3px 8px 3px 24px;
+    }
+
+    .param-cell { color: #212529; font-weight: 500; }
+    .enum-hint {
+        color: #8a6d00;
+        background: #fff6d9;
+        border: 1px solid #f0e0a8;
+        border-radius: 3px;
+        padding: 0 4px;
+        font-size: 11px;
+        font-family: Consolas, "Courier New", monospace;
+        font-weight: 400;
+        margin-left: 4px;
+        display: inline-block;
+        vertical-align: baseline;
+    }
+    .val-cell {
+        font-family: Consolas, "Courier New", monospace;
+        color: #0b5ed7;
+    }
+    .unknown-value {
+        color: #b02a37;
+        font-weight: 700;
+        font-family: Consolas, "Courier New", monospace;
+        background: #fdecee;
+        border-radius: 3px;
+        padding: 0 6px;
+        display: inline-block;
+    }
+    .not-captured { color: #868e96; font-style: italic; }
+    .placeholder-text { text-align: center; color: #6c757d; padding: 25px 0; }
+</style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-row">
         <h2>BIOS / iDRAC System Setup 參數檢視器</h2>
-        <span class="badge-hint">支援格式：Tab 分隔格式 / 網頁貼上項目符號黏連格式</span>
+        <span class="badge-hint">解析範圍：<b>System Setup → System BIOS → System Information</b> 起</span>
     </div>
 
-    <!-- 檔案上傳區塊 -->
-    <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <!-- 檔案上傳 -->
+    <div class="upload-area" id="dropZone">
         <span class="upload-btn">選擇檔案</span>
         <span>點擊或拖曳 System Setup (.txt) 檔案至此處</span>
-        <input type="file" id="fileInput" accept=".txt">
+        <input type="file" id="fileInput" accept=".txt,.log,.text">
     </div>
 
-    <!-- 檔名顯示、匯出按鈕與搜尋列 -->
+    <!-- 貼上輸入 -->
+    <div class="paste-panel">
+        <div class="paste-head">
+            <label for="pasteInput">或直接貼上 System Setup 內容（Ctrl + Enter 解析）</label>
+            <div class="toolbar-actions">
+                <button type="button" class="action-btn btn-primary" id="parseBtn">解析貼上內容</button>
+                <button type="button" class="action-btn btn-danger" id="clearPasteBtn">清空輸入</button>
+            </div>
+        </div>
+        <textarea id="pasteInput" placeholder="請將 System Setup 內容貼在此處……"></textarea>
+    </div>
+
+    <!-- 資訊列 -->
     <div class="info-bar" id="infoBar" style="display: none;">
         <div class="file-meta">
-            <div class="file-name-display">檔案名稱：<span id="fileName"></span></div>
+            <div class="file-name-display">來源：<span id="fileName"></span></div>
             <span class="format-tag" id="formatType"></span>
             <span id="rowCount" style="color: #495057;"></span>
         </div>
         <div class="toolbar-actions">
-            <button type="button" class="action-btn btn-md" id="copyMdBtn" onclick="copyAsMarkdown()">📋 複製 Markdown</button>
-            <button type="button" class="action-btn btn-excel" id="exportExcelBtn" onclick="downloadAsExcel()">📊 下載 Excel</button>
+            <button type="button" class="action-btn btn-md" id="copyMdBtn">📋 複製 Markdown</button>
+            <button type="button" class="action-btn btn-excel" id="exportExcelBtn">📊 下載 Excel</button>
             <input type="text" id="searchInput" class="search-box" placeholder="即時過濾參數或數值...">
         </div>
     </div>
 
+    <div id="noticeContainer"></div>
+
     <!-- 資料表格 -->
     <div id="tableContainer">
-        <div class="placeholder-text">請上傳 System Setup 文字檔以檢視內容</div>
+        <div class="placeholder-text">請上傳或貼上 System Setup 文字以檢視內容</div>
     </div>
 </div>
 
 <script>
-    const fileInput = document.getElementById('fileInput');
-    const dropZone = document.getElementById('dropZone');
-    const infoBar = document.getElementById('infoBar');
-    const fileNameSpan = document.getElementById('fileName');
-    const formatTypeSpan = document.getElementById('formatType');
-    const rowCountSpan = document.getElementById('rowCount');
-    const tableContainer = document.getElementById('tableContainer');
-    const searchInput = document.getElementById('searchInput');
-    const copyMdBtn = document.getElementById('copyMdBtn');
+/* =========================================================
+   全域狀態
+   ========================================================= */
+const fileInput      = document.getElementById('fileInput');
+const dropZone       = document.getElementById('dropZone');
+const infoBar        = document.getElementById('infoBar');
+const fileNameSpan   = document.getElementById('fileName');
+const formatTypeSpan = document.getElementById('formatType');
+const rowCountSpan   = document.getElementById('rowCount');
+const tableContainer = document.getElementById('tableContainer');
+const searchInput    = document.getElementById('searchInput');
+const copyMdBtn      = document.getElementById('copyMdBtn');
+const pasteInput     = document.getElementById('pasteInput');
+const parseBtn       = document.getElementById('parseBtn');
+const clearPasteBtn  = document.getElementById('clearPasteBtn');
+const noticeContainer= document.getElementById('noticeContainer');
 
-    // 儲存當前解析後的資料結構，供匯出 Markdown / Excel 使用
-    let currentParsedRows = [];
-    let currentBaseFileName = 'System_Setup';
+let currentRows = [];
+let currentBaseFileName = 'System_Setup';
 
-    // BIOS / iDRAC 已知無數值之分類標題或空白設定項 (精準比對用)
-    const EXACT_HEADERS_OR_EMPTY = new Set([
-        "System Setup", "System BIOS", "System Information", "Memory Settings",
-        "Memory Map Out", "Processor Settings", "Dell Controlled Turbo",
-        "Processor 0", "Processor 1", "NVMe Settings", "Boot Settings",
-        "UEFI Boot Settings", "Network Settings", "PXE Device 1 Settings",
-        "PXE Device 2 Settings", "PXE Device 3 Settings", "PXE Device 4 Settings",
-        "HTTP Device 1 Settings", "HTTP Device 2 Settings", "HTTP Device 3 Settings",
-        "HTTP Device 4 Settings", "TLS Authentication", "iSCSI Device 1 Settings",
-        "Connection 1 Settings", "Connection 2 Settings", "NVMe-oF Subsystem Settings",
-        "NVMe-oF Subsystem 1 Settings", "NVMe-oF Subsystem 2 Settings",
-        "NVMe-oF Subsystem 3 Settings", "NVMe-oF Subsystem 4 Settings",
-        "Integrated Devices", "Slot Disablement", "Slot Bifurcation",
-        "Serial Communication", "System Profile Settings", "System Security",
-        "TPM Advanced Settings", "Redundant OS Control", "Miscellaneous Settings",
-        "iDRAC Settings", "System Summary", "System Event Log", "Network",
-        "NIC 1", "IPv4", "IPv6", "VLAN", "OCP Slot Power When Host Off (S5 State)",
-        "Common Settings", "IPMI", "Alerts", "Front Panel Security",
-        "Media & USB Settings", "Virtual Media", "USB Management Port",
-        "Lifecycle Controller", "Hardware Configuration Validation",
-        "Power Configuration", "Power Supply Options", "Thermal",
-        "System Location", "User Configuration", "Communications Permissions",
-        "OS to iDRAC Pass-Through", "Remote Enablement", "About",
-        // 常見留白欄位
-        "IP", "Subnet Mask", "Gateway", "Primary DNS", "Secondary DNS", "URI",
-        "iSCSI Initiator Name", "Initiator IP Address", "Initiator Subnet Mask",
-        "Initiator Gateway", "Target Name", "Target IP Address", "ISID",
-        "CHAP Name", "Reverse CHAP Name", "Host Security Key Path",
-        "Host IP Address", "Host Subnet Mask", "Host Gateway",
-        "Subsystem NQN", "Subsystem Address", "Subsystem NID", "Security Key Path",
-        "Asset Tag", "Static DNS Domain Name", "Alert Destination 1",
-        "Alert Destination 2", "Alert Destination 3", "Alert Destination 4",
-        "Alert Destination 5", "Alert Destination 6", "Alert Destination 7",
-        "Alert Destination 8", "Hot Spare", "Data Center Name", "Aisle Name",
-        "Rack Name", "Provisioning Server"
-    ]);
+/* =========================================================
+   ★ 預置枚舉（來自兩組 Log：BIOS 80.0.4 與 1.0.0） ★
+   ========================================================= */
+const PRELOADED_ENUMS = {
+    // System Information
+    "System Model Name": ["PowerEdge XR9700"],
+    "System Manufacturer": ["Dell Inc."],
+    "System Manufacturer Contact Information": ["www.dell.com"],
 
-    // 參數名稱前綴白名單 (處理參數與數值無空格直接黏連，依照長度由長到短排序避免誤切)
-    const KNOWN_PARAM_PREFIXES = [
-        "DIMM Self-Healing (Post-Package Repair) on Uncorrectable Memory Error",
-        "Enable Writes to SGXLEPUBKEYHASH from OS/SW",
-        "Enable/Disable SGX Auto MP Registration Agent",
-        "USB Server Configuration Profile (SCP)",
-        "System Manufacturer Contact Information",
-        "Current State of Embedded Video Controller",
-        "CPU Interconnect Bus Link Power Management",
-        "PCI ASPM L1 Link Power Management",
-        "Use DHCP to Obtain DNS Server Addresses",
-        "Use DHCPv6 to Obtain DNS Server Addresses",
-        "Enable Platform Event Filter Alerts",
-        "Collect System Inventory on Restart",
-        "TDX Secure Arbitration Mode (SEAM) Loader",
-        "Intel Trust Domain Extensions (TDX)",
-        "PCIe Data Link Feature Exchange",
-        "Dell Wyse P25/P45 BIOS Access",
-        "Auto-Discovery Bifurcation",
-        "Serial Port User Privilege",
-        "USB Pass-Through Configuration",
-        "LOM Pass-Through Configuration",
-        "Power Supply Capacity Alert",
-        "Configuration Validation State",
-        "Adjacent Cache Line Prefetch",
-        "SGX Package Info In-Band Access",
-        "UEFI CA Certificate Scope",
-        "In-Band Manageability Interface",
-        "User-Accessible USB Ports",
-        "Dell AVX Scaling Technology",
-        "CPU Physical Address Limit",
-        "Number of Cores per Processor",
-        "AVX ICCP Pre-Grant License",
-        "Dead Line LLC Allocation",
-        "Correctable Error Logging",
-        "UEFI Compliance Version",
-        "System Model Name", "System BIOS Version", "System Service Tag",
-        "System Manufacturer", "System FPGA Version", "System Memory Size",
-        "System Memory Type", "System Memory Speed", "Video Memory",
-        "System Memory Testing", "Memory Operating Mode", "Node Interleaving",
-        "Memory Training", "Memory Paging Policy", "Logical Processor",
-        "Virtualization Technology", "Preboot DMA Protection",
-        "Kernel DMA Protection", "Directory Mode", "Hardware Prefetcher",
-        "DCU Streamer Prefetcher", "DCU IP Prefetcher", "Virtual NUMA",
-        "Sub-NUMA Cluster", "MADT Core Enumeration", "UPI Prefetch",
-        "XPT Prefetch", "LLC Prefetch", "Directory AtoS", "AVX P1",
-        "SST Performance Profile", "Dell Controlled Turbo", "Optimizer Mode",
-        "AMP Prefetch", "Homeless Prefetch", "Processor Core Speed",
-        "Family-Model-Stepping", "Brand", "Level 2 Cache", "Level 3 Cache",
-        "Number of Cores", "Microcode", "NVMe Mode", "BIOS NVMe Driver",
-        "Boot Mode", "Boot Sequence Retry", "Generic USB Boot",
-        "Hard Disk Placeholder", "Clean Sysprep Variables", "Interactive Mode",
-        "UEFI Boot Sequence", "Number of PXE Devices", "TLS Authentication Mode",
-        "DNS Info via DHCP", "Target Info via DHCP", "Target Boot LUN",
-        "Authentication Type", "Reverse CHAP Secret", "Connection Order",
-        "NVMe-oF Host NQN Mode", "NVMe-oF Host NQN", "NVMe-oF Host ID",
-        "Subsystem Info via DHCP", "Subsystem Controller ID",
-        "iDRAC Direct USB Port", "Embedded Video Controller",
-        "I/O Snoop Hold-Off Response", "SR-IOV Global Enable",
-        "Empty Slot Unhide", "Memory-Mapped I/O Base", "PCIe PTM Support",
-        "PCIe Resizable BAR", "Serial Communication", "Serial Port Address",
-        "External Serial Connector", "Failsafe Baud Rate", "Remote Terminal Type",
-        "System Profile", "CPU Power Management", "Memory Frequency",
-        "Turbo Boost", "Energy-Efficient Turbo", "Memory Patrol Scrub",
-        "Memory Refresh Rate", "Dynamic Load Line Switch",
-        "Latency-Optimized Mode", "Energy-Efficient Policy", "MONITOR / MWAIT",
-        "Workload Profile", "Workload Configuration", "SMM Security Mitigation",
-        "Strong Password", "System Password", "Setup Password",
-        "Password Rotation", "Maximum Password Age", "Password History",
-        "Password Status", "TPM Security", "TPM Information", "TPM Firmware",
-        "TPM Hierarchy", "TPM PPI Bypass Provision", "TPM PPI Bypass Clear",
-        "TPM 2.0 Algorithm", "Memory Encryption", "Global Memory Integrity",
-        "TME-MT / TDX Key Split", "PRMRR Size", "SGX QoS", "Owner Epochs",
-        "SGX Factory Reset", "Power Button", "UEFI Variable Access",
-        "Secure Boot Policy", "Secure Boot Mode", "Secure Boot",
-        "Redundant OS Location", "Redundant OS State", "Redundant OS Boot",
-        "System Time", "System Date", "Time Zone", "Daylight Saving Time",
-        "Keyboard NumLock", "F1/F2 Prompt on Error", "Power Cycle Request",
-        "ACPI FPDT", "Enable NIC", "NIC Selection", "Failover Network",
-        "MAC Address", "Link Tuning", "Auto Dedicated NIC",
-        "Network Speed (Mbps)", "Active NIC Interface", "Duplex Mode",
-        "Enable IPv4", "Enable DHCP", "Static IP Address", "Static Gateway",
-        "Static Subnet Mask", "Static Preferred DNS Server",
-        "Static Alternate DNS Server", "Enable IPv6", "Address Generation Mode",
-        "Enable Auto-Configuration", "Static IP Address 1", "Static Prefix Length",
-        "Link Local Address", "IP Address 2", "Enable VLAN ID",
-        "Register iDRAC on DNS", "DNS iDRAC Name", "Auto-Configure Domain Name",
-        "Static DNS Domain Name", "Enable IPMI over LAN",
-        "Channel Privilege Level Limit", "Encryption Key", "Community String",
-        "Virtual Media Status", "USB Management Port Mode",
-        "Lifecycle Controller", "Power Cap Policy", "Maximum Power Cap (W)",
-        "Minimum Power Cap (W)", "Power Cap (W)", "Redundancy Policy",
-        "Thermal Profile", "Fan Speed Offset", "Minimum Fan Speed",
-        "Rack Slot", "Size of Managed System (U)", "User ID", "Enable User",
-        "User Name", "LAN User Privilege", "USB NIC IP Address",
-        "Enable Auto-Discovery", "Transport Type", "Retry Count",
-        "Target Port", "CHAP Type", "CHAP Secret", "Subsystem Port",
-        "VLAN Priority", "VLAN ID", "Interface", "Protocol", "Timeout",
-        "Security", "Password", "Priority", "Intel TXT", "Intel SGX",
-        "C-States", "AES-NI", "NVMe-oF", "ADDDC", "VLAN", "DHCP", "C1E"
-    ].sort((a, b) => b.length - a.length);
+    // Memory Settings
+    "System Memory Type": ["ECC DDR5"],
+    "System Memory Testing": ["Disabled"],
+    "Memory Operating Mode": ["OptimizerMode"],
+    "Node Interleaving": ["Disabled"],
+    "ADDDC": ["Disabled"],
+    "Memory Training": ["MemoryTrainingFast"],
+    "DIMM Self-Healing (Post-Package Repair) on Uncorrectable Memory Error": ["Enabled"],
+    "Correctable Error Logging": ["Disabled"],
+    "Memory Paging Policy": ["PagingClosed"],
 
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) handleFile(e.target.files[0]);
-    });
+    // Processor Settings
+    "Logical Processor": ["Enabled"],
+    "Virtualization Technology": ["Enabled"],
+    "Preboot DMA Protection": ["Disabled"],
+    "Kernel DMA Protection": ["Disabled"],
+    "Directory Mode": ["Enabled"],
+    "Adjacent Cache Line Prefetch": ["Enabled"],
+    "Hardware Prefetcher": ["Enabled"],
+    "DCU Streamer Prefetcher": ["Enabled"],
+    "DCU IP Prefetcher": ["Enabled"],
+    "Virtual NUMA": ["Disabled"],
+    "Sub-NUMA Cluster": ["Disabled"],
+    "MADT Core Enumeration": ["Linear"],
+    "UPI Prefetch": ["Enabled"],
+    "XPT Prefetch": ["Enabled"],
+    "LLC Prefetch": ["Disabled"],
+    "Dead Line LLC Allocation": ["Enabled"],
+    "Directory AtoS": ["Disabled"],
+    "AVX P1": ["Normal"],
+    "SST Performance Profile": ["IssOp1"],
+    "AVX ICCP Pre-Grant License": ["Disabled"],
+    "Dell Controlled Turbo": ["Disabled"],
+    "Optimizer Mode": ["Auto"],
+    "Number of Cores per Processor": ["All"],
+    "CPU Physical Address Limit": ["Disabled"],
+    "AMP Prefetch": ["Disabled"],
+    "Homeless Prefetch": ["Auto"],
+    "Brand": ["INTEL(R) XEON(R) 6716P-B"],
 
-    dropZone.addEventListener('dragover', (e) => {
+    // NVMe
+    "NVMe Mode": ["NonRaid"],
+    "BIOS NVMe Driver": ["DellQualifiedDrives"],
+
+    // Boot
+    "Boot Mode": ["Uefi"],
+    "Boot Sequence Retry": ["Enabled"],
+    "Generic USB Boot": ["Disabled"],
+    "Hard Disk Placeholder": ["Disabled"],
+    "Clean Sysprep Variables": ["None"],
+    "Interactive Mode": ["Enabled"],
+
+    // Network / PXE
+    "PXE Device 1": ["Enabled", "Disabled"],
+    "PXE Device 2": ["Disabled"],
+    "PXE Device 3": ["Disabled"],
+    "PXE Device 4": ["Disabled"],
+    "Interface": ["NIC.Embedded.4-1-1", "NIC.Embedded.1-1-1"],
+    "Protocol": ["IPv4"],
+    "VLAN": ["Disabled"],
+    "DHCP": ["Enabled", "Disabled"],
+    "DNS Info via DHCP": ["Enabled"],
+    "TLS Authentication Mode": ["OneWay"],
+
+    // iSCSI
+    "iSCSI Device 1": ["Disabled"],
+    "Connection 1": ["Disabled"],
+    "Connection 2": ["Disabled"],
+    "Target Info via DHCP": ["Disabled"],
+    "Authentication Type": ["None"],
+    "CHAP Type": ["OneWay"],
+    "Connection Order": ["Con1Con2"],
+
+    // NVMe-oF
+    "NVMe-oF": ["Disabled"],
+    "NVMe-oF Host NQN Mode": ["HostNqnModeDell"],
+    "NVMe-oF Subsystem 1": ["Disabled"],
+    "NVMe-oF Subsystem 2": ["Disabled"],
+    "NVMe-oF Subsystem 3": ["Disabled"],
+    "NVMe-oF Subsystem 4": ["Disabled"],
+    "Transport Type": ["TCP"],
+    "Subsystem Info via DHCP": ["Disabled"],
+    "Security": ["Disabled"],
+
+    // Integrated Devices
+    "User-Accessible USB Ports": ["AllOn"],
+    "iDRAC Direct USB Port": ["On"],
+    "Embedded NICs 1-4": ["Enabled"],
+    "Embedded NICs 5-8": ["Enabled"],
+    "Embedded Video Controller": ["Enabled"],
+    "I/O Snoop Hold-Off Response": ["Roll2KCycles"],
+    "Current State of Embedded Video Controller": ["Enabled"],
+    "SR-IOV Global Enable": ["Enabled"],
+    "Empty Slot Unhide": ["Disabled"],
+    "PCIe Data Link Feature Exchange": ["Enabled"],
+    "PCIe PTM Support": ["Auto"],
+    "PCIe Resizable BAR": ["Disabled"],
+    "Slot 21": ["Enabled"],
+    "Auto-Discovery Bifurcation": ["PlatformDefault"],
+
+    // Serial Communication
+    "Serial Communication": ["Off"],
+    "Serial Port Address": ["Com1"],
+    "External Serial Connector": ["Serial1"],
+    "Remote Terminal Type": ["Vt100Vt220"],
+
+    // System Profile
+    "System Profile": ["PerfPerWattOptimizedDapc"],
+    "CPU Power Management": ["SysDbpm"],
+    "Memory Frequency": ["MaxPerf"],
+    "Turbo Boost": ["Enabled"],
+    "Energy-Efficient Turbo": ["Enabled"],
+    "C1E": ["Enabled"],
+    "C-States": ["Enabled"],
+    "Memory Patrol Scrub": ["Standard"],
+    "Dynamic Load Line Switch": ["Enabled"],
+    "Latency-Optimized Mode": ["Disabled"],
+    "Energy-Efficient Policy": ["LowPower", "BalancedPerformance"],
+    "MONITOR / MWAIT": ["Enabled"],
+    "Workload Profile": ["NotConfigured"],
+    "CPU Interconnect Bus Link Power Management": ["Enabled"],
+    "PCI ASPM L1 Link Power Management": ["Enabled"],
+    "Workload Configuration": ["Balance"],
+
+    // System Security
+    "AES-NI": ["Enabled"],
+    "SMM Security Mitigation": ["Enabled"],
+    "Strong Password": ["Disabled"],
+    "Password Rotation": ["Disabled"],
+    "Password Status": ["Unlocked"],
+    "TPM Security": ["On"],
+    "TPM Information": ["Type: 2.0 NTC", "Type: 2.0 STM"],
+    "TPM Hierarchy": ["Enabled"],
+    "TPM PPI Bypass Provision": ["Disabled"],
+    "TPM PPI Bypass Clear": ["Disabled"],
+    "TPM 2.0 Algorithm": ["SHA256"],
+    "Intel TXT": ["Off", "On"],
+    "Memory Encryption": ["Disabled", "MultipleKeys"],
+    "Global Memory Integrity": ["Disabled"],
+    "Intel Trust Domain Extensions (TDX)": ["Disabled", "Enabled"],
+    "TDX Secure Arbitration Mode (SEAM) Loader": ["Disabled", "Enabled"],
+    "Intel SGX": ["Off", "On"],
+    "SGX Package Info In-Band Access": ["Off"],
+    "SGX QoS": ["Enabled"],
+    "Owner Epochs": ["UserManualEpoch"],
+    "Enable Writes to SGXLEPUBKEYHASH from OS/SW": ["Enabled"],
+    "Enable/Disable SGX Auto MP Registration Agent": ["Enabled"],
+    "SGX Factory Reset": ["Off"],
+    "Power Button": ["Enabled"],
+    "UEFI Variable Access": ["Standard"],
+    "In-Band Manageability Interface": ["Enabled"],
+    "Secure Boot": ["Disabled"],
+    "Secure Boot Policy": ["Standard"],
+    "Secure Boot Mode": ["DeployedMode"],
+    "UEFI CA Certificate Scope": ["DeviceFirmwareAndOs"],
+
+    // Redundant OS
+    "Redundant OS Location": ["None"],
+    "Redundant OS State": ["Visible"],
+    "Redundant OS Boot": ["Disabled"],
+
+    // Miscellaneous
+    "Time Zone": ["LOCAL"],
+    "Daylight Saving Time": ["Disabled"],
+    "Keyboard NumLock": ["On"],
+    "F1/F2 Prompt on Error": ["Enabled", "Disabled"],
+    "Dell Wyse P25/P45 BIOS Access": ["Enabled"],
+    "Power Cycle Request": ["None"],
+    "ACPI FPDT": ["Disabled"],
+
+    // iDRAC Network
+    "Enable NIC": ["Enabled"],
+    "NIC Selection": ["Dedicated"],
+    "Failover Network": ["None"],
+    "Link Tuning": ["Autoneg"],
+    "Auto Dedicated NIC": ["Disabled"],
+    "Active NIC Interface": ["Dedicated"],
+    "Duplex Mode": ["Full"],
+
+    // IPv4
+    "Enable IPv4": ["Enabled"],
+    "Enable DHCP": ["Disabled", "Enabled"],
+    "Use DHCP to Obtain DNS Server Addresses": ["Disabled", "Enabled"],
+
+    // IPv6
+    "Enable IPv6": ["Enabled"],
+    "Address Generation Mode": ["StablePrivacy"],
+    "Enable Auto-Configuration": ["Enabled"],
+    "Use DHCPv6 to Obtain DNS Server Addresses": ["Enabled"],
+
+    // VLAN / Common
+    "Enable VLAN ID": ["Disabled"],
+    "Register iDRAC on DNS": ["Disabled"],
+    "DNS iDRAC Name": ["idrac-1234567"],
+    "Auto-Configure Domain Name": ["Enabled"],
+
+    // IPMI / Alerts
+    "Enable IPMI over LAN": ["Enabled", "Disabled"],
+    "Channel Privilege Level Limit": ["Administrator"],
+    "Enable Alert Destination 1": ["Disabled"],
+    "Enable Alert Destination 2": ["Disabled"],
+    "Enable Alert Destination 3": ["Disabled"],
+    "Enable Alert Destination 4": ["Disabled"],
+    "Enable Alert Destination 5": ["Disabled"],
+    "Enable Alert Destination 6": ["Disabled"],
+    "Enable Alert Destination 7": ["Disabled"],
+    "Enable Alert Destination 8": ["Disabled"],
+    "Community String": ["public"],
+
+    // Media & USB
+    "Virtual Media Status": ["AutoAttach"],
+    "USB Management Port Mode": ["iDRAC Direct Only"],
+    "USB Server Configuration Profile (SCP)": [
+        "Enabled",
+        "Enabled while server has default credential settings only"
+    ],
+
+    // Lifecycle Controller
+    "Lifecycle Controller": ["Enabled"],
+    "Collect System Inventory on Restart": ["Enabled"],
+
+    // Power
+    "Power Cap Policy": ["Disabled"],
+    "Redundancy Policy": ["Not Redundant"],
+
+    // Thermal
+    "Thermal Profile": ["Default Thermal Profile Settings"],
+    "Fan Speed Offset": ["Off"],
+
+    // User Configuration
+    "Enable User": ["Enabled"],
+    "User Name": ["root"],
+    "LAN User Privilege": ["Administrator"],
+    "Serial Port User Privilege": ["Administrator"],
+
+    // OS to iDRAC Pass-Through
+    "LOM Pass-Through Configuration": ["Disabled"],
+    "USB Pass-Through Configuration": ["Enabled"],
+
+    // Remote Enablement
+    "Enable Auto-Discovery": ["Off"]
+};
+
+/* =========================================================
+   已知參數清單（用於骨架顯示）
+   ========================================================= */
+const KNOWN_PARAMS = [
+    // System Information
+    "System Model Name", "System BIOS Version", "System Service Tag",
+    "System Manufacturer", "System Manufacturer Contact Information",
+    "System FPGA Version", "UEFI Compliance Version",
+
+    // Memory Settings
+    "System Memory Size", "System Memory Type", "System Memory Speed", "Video Memory",
+    "System Memory Testing", "Memory Operating Mode", "Node Interleaving", "ADDDC",
+    "Memory Training",
+    "DIMM Self-Healing (Post-Package Repair) on Uncorrectable Memory Error",
+    "Correctable Error Logging", "Memory Paging Policy",
+    "DIMM Slot 0", "DIMM Slot 1", "DIMM Slot 2", "DIMM Slot 3",
+
+    // Processor Settings
+    "Logical Processor", "Virtualization Technology", "Preboot DMA Protection",
+    "Kernel DMA Protection", "Directory Mode", "Adjacent Cache Line Prefetch",
+    "Hardware Prefetcher", "DCU Streamer Prefetcher", "DCU IP Prefetcher",
+    "Virtual NUMA", "Sub-NUMA Cluster", "MADT Core Enumeration", "UPI Prefetch",
+    "XPT Prefetch", "LLC Prefetch", "Dead Line LLC Allocation", "Directory AtoS",
+    "AVX P1", "SST Performance Profile", "AVX ICCP Pre-Grant License",
+    "Dell Controlled Turbo", "Dell AVX Scaling Technology", "Optimizer Mode",
+    "Number of Cores per Processor", "CPU Physical Address Limit", "AMP Prefetch",
+    "Homeless Prefetch", "Processor Core Speed",
+    "Family-Model-Stepping", "Brand", "Level 2 Cache", "Level 3 Cache",
+    "Number of Cores", "Microcode",
+
+    // NVMe
+    "NVMe Mode", "BIOS NVMe Driver",
+
+    // Boot
+    "Boot Mode", "Boot Sequence Retry", "Generic USB Boot", "Hard Disk Placeholder",
+    "Clean Sysprep Variables", "Interactive Mode", "UEFI Boot Sequence",
+
+    // Network
+    "Number of PXE Devices",
+    "PXE Device 1", "PXE Device 2", "PXE Device 3", "PXE Device 4",
+    "Interface", "Protocol", "VLAN", "VLAN ID", "VLAN Priority", "DHCP",
+    "IP", "Subnet Mask", "Gateway", "DNS Info via DHCP",
+    "Primary DNS", "Secondary DNS", "URI", "TLS Authentication Mode",
+
+    // iSCSI
+    "iSCSI Initiator Name", "iSCSI Device 1",
+    "Connection 1", "Connection 2", "Retry Count", "Timeout",
+    "Initiator IP Address", "Initiator Subnet Mask", "Initiator Gateway",
+    "Target Info via DHCP", "Target Name", "Target IP Address",
+    "Target Port", "Target Boot LUN", "ISID",
+    "Authentication Type", "CHAP Type", "CHAP Name", "CHAP Secret",
+    "Reverse CHAP Name", "Reverse CHAP Secret", "Connection Order",
+
+    // NVMe-oF
+    "NVMe-oF", "NVMe-oF Host NQN Mode", "NVMe-oF Host NQN", "NVMe-oF Host ID",
+    "Host Security Key Path",
+    "NVMe-oF Subsystem 1", "NVMe-oF Subsystem 2", "NVMe-oF Subsystem 3", "NVMe-oF Subsystem 4",
+    "Transport Type", "Host IP Address", "Host Subnet Mask", "Host Gateway",
+    "Subsystem Info via DHCP", "Subsystem NQN", "Subsystem Address",
+    "Subsystem Port", "Subsystem NID", "Subsystem Controller ID",
+    "Security", "Security Key Path",
+
+    // Integrated Devices
+    "User-Accessible USB Ports", "iDRAC Direct USB Port",
+    "Embedded NICs 1-4", "Embedded NICs 5-8", "Embedded Video Controller",
+    "I/O Snoop Hold-Off Response", "Current State of Embedded Video Controller",
+    "SR-IOV Global Enable", "Empty Slot Unhide", "Memory-Mapped I/O Base",
+    "PCIe Data Link Feature Exchange", "PCIe PTM Support", "PCIe Resizable BAR",
+    "Slot 21", "Auto-Discovery Bifurcation",
+
+    // Serial Communication
+    "Serial Communication", "Serial Port Address", "External Serial Connector",
+    "Failsafe Baud Rate", "Remote Terminal Type",
+
+    // System Profile
+    "System Profile", "CPU Power Management", "Memory Frequency", "Turbo Boost",
+    "Energy-Efficient Turbo", "C1E", "C-States", "Memory Patrol Scrub",
+    "Memory Refresh Rate", "Dynamic Load Line Switch", "Latency-Optimized Mode",
+    "Energy-Efficient Policy", "MONITOR / MWAIT", "Workload Profile",
+    "CPU Interconnect Bus Link Power Management", "PCI ASPM L1 Link Power Management",
+    "Workload Configuration",
+
+    // System Security
+    "AES-NI", "SMM Security Mitigation", "Strong Password",
+    "System Password", "Setup Password", "Password Rotation",
+    "Maximum Password Age", "Password History", "Password Status",
+    "TPM Security", "TPM Information", "TPM Firmware", "TPM Hierarchy",
+    "TPM PPI Bypass Provision", "TPM PPI Bypass Clear", "TPM 2.0 Algorithm",
+    "Intel TXT", "Memory Encryption", "Global Memory Integrity",
+    "Intel Trust Domain Extensions (TDX)", "TME-MT / TDX Key Split",
+    "TDX Secure Arbitration Mode (SEAM) Loader", "Intel SGX",
+    "SGX Package Info In-Band Access", "PRMRR Size", "SGX QoS", "Owner Epochs",
+    "Enable Writes to SGXLEPUBKEYHASH from OS/SW",
+    "Enable/Disable SGX Auto MP Registration Agent", "SGX Factory Reset",
+    "Power Button", "UEFI Variable Access", "In-Band Manageability Interface",
+    "Secure Boot", "Secure Boot Policy", "Secure Boot Mode", "UEFI CA Certificate Scope",
+
+    // Redundant OS
+    "Redundant OS Location", "Redundant OS State", "Redundant OS Boot",
+
+    // Miscellaneous
+    "System Time", "System Date", "Time Zone", "Daylight Saving Time", "Asset Tag",
+    "Keyboard NumLock", "F1/F2 Prompt on Error", "Dell Wyse P25/P45 BIOS Access",
+    "Power Cycle Request", "ACPI FPDT",
+
+    // iDRAC Network
+    "Enable NIC", "NIC Selection", "Failover Network", "MAC Address", "Link Tuning",
+    "Auto Dedicated NIC", "Network Speed (Mbps)", "Active NIC Interface", "Duplex Mode",
+
+    // IPv4
+    "Enable IPv4", "Enable DHCP", "Static IP Address", "Static Gateway",
+    "Static Subnet Mask", "Use DHCP to Obtain DNS Server Addresses",
+    "Static Preferred DNS Server", "Static Alternate DNS Server",
+
+    // IPv6
+    "Enable IPv6", "Address Generation Mode", "Enable Auto-Configuration",
+    "Static IP Address 1", "Static Prefix Length", "Link Local Address",
+    "IP Address 2", "Use DHCPv6 to Obtain DNS Server Addresses",
+
+    // VLAN / Common
+    "Enable VLAN ID", "Priority",
+    "Register iDRAC on DNS", "DNS iDRAC Name", "Auto-Configure Domain Name",
+    "Static DNS Domain Name",
+
+    // IPMI / Alerts
+    "Enable IPMI over LAN", "Channel Privilege Level Limit", "Encryption Key",
+    "Enable Platform Event Filter Alerts",
+    "Enable Alert Destination 1", "Enable Alert Destination 2",
+    "Enable Alert Destination 3", "Enable Alert Destination 4",
+    "Enable Alert Destination 5", "Enable Alert Destination 6",
+    "Enable Alert Destination 7", "Enable Alert Destination 8",
+    "Community String",
+
+    // Media & USB
+    "Virtual Media Status", "USB Management Port Mode",
+    "USB Server Configuration Profile (SCP)",
+
+    // Lifecycle Controller
+    "Lifecycle Controller", "Collect System Inventory on Restart",
+    "Configuration Validation State",
+
+    // Power
+    "Power Cap Policy", "Maximum Power Cap (W)", "Minimum Power Cap (W)",
+    "Power Cap (W)", "Power Supply Capacity Alert",
+    "Redundancy Policy", "Hot Spare",
+
+    // Thermal
+    "Thermal Profile", "Fan Speed Offset", "Minimum Fan Speed",
+
+    // System Location
+    "Data Center Name", "Aisle Name", "Rack Name", "Rack Slot",
+    "Size of Managed System (U)",
+
+    // User Configuration
+    "User ID", "Enable User", "User Name", "LAN User Privilege",
+    "Serial Port User Privilege", "Password",
+
+    // OS to iDRAC Pass-Through / Remote Enablement
+    "LOM Pass-Through Configuration", "USB Pass-Through Configuration",
+    "USB NIC IP Address", "Enable Auto-Discovery", "Provisioning Server"
+];
+
+/* 去重並依長度排序（長者優先，確保前綴匹配正確） */
+const KNOWN_PARAM_SET = Array.from(new Set(KNOWN_PARAMS));
+const SORTED_PARAMS   = [...KNOWN_PARAM_SET].sort((a, b) => b.length - a.length);
+
+/* 分類標題（精確比對） */
+const SECTION_TITLES = new Set([
+    "System Setup", "System BIOS", "System Information", "Memory Settings",
+    "Memory Map Out", "Processor Settings", "Processor 0", "Processor 1",
+    "NVMe Settings", "Boot Settings", "UEFI Boot Settings", "Network Settings",
+    "TLS Authentication", "Integrated Devices", "Slot Disablement",
+    "Slot Bifurcation", "Serial Communication", "System Profile Settings",
+    "System Security", "TPM Advanced Settings", "Redundant OS Control",
+    "Miscellaneous Settings", "iDRAC Settings", "System Summary",
+    "System Event Log", "Network", "NIC 1", "IPv4", "IPv6", "VLAN",
+    "Common Settings", "IPMI", "Alerts", "Front Panel Security",
+    "Media & USB Settings", "Virtual Media", "USB Management Port",
+    "Lifecycle Controller", "Hardware Configuration Validation",
+    "Power Configuration", "Power Supply Options", "Thermal",
+    "System Location", "User Configuration", "Communications Permissions",
+    "OS to iDRAC Pass-Through", "Remote Enablement", "About",
+    "NVMe-oF Subsystem Settings"
+]);
+
+/* 動態編號型標題（PXE Device 1 Settings、NVMe-oF Subsystem 1 Settings...） */
+const DYN_SECTION_RE = /^(?:DIMM Slot|PXE Device|HTTP Device|iSCSI Device|NVMe-oF Subsystem|Connection)\s*\d+\s+Settings$/;
+
+/* 動態編號型參數（DIMM Slot 0Enabled、PXE Device 1Enabled、Slot 21Enabled...） */
+const DYN_PARAM_RE = /^((?:DIMM Slot|PXE Device|HTTP Device|iSCSI Device|NVMe-oF Subsystem|Connection|Slot)\s*\d+)(.+)$/;
+
+/* Alert Destination 動態編號 */
+const ALERT_RE = /^((?:Enable Alert Destination|Alert Destination)\s*[1-8])(\d+\.\d+\.\d+\.\d+|.*)$/;
+
+/* =========================================================
+   初始化枚舉 Map（先載入預置值，之後解析會持續累積）
+   ========================================================= */
+const paramEnumMap = new Map();
+Object.entries(PRELOADED_ENUMS).forEach(([param, values]) => {
+    paramEnumMap.set(param, new Set(values));
+});
+
+/* =========================================================
+   事件綁定
+   ========================================================= */
+fileInput.addEventListener('change', e => {
+    if (e.target.files.length > 0) handleFile(e.target.files[0]);
+});
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+});
+
+parseBtn.addEventListener('click', () => {
+    const txt = pasteInput.value;
+    if (!txt.trim()) {
+        showNotice('請先貼上 System Setup 內容。', true);
+        return;
+    }
+    currentBaseFileName = 'Pasted_System_Setup';
+    fileNameSpan.textContent = '（貼上內容）';
+    doParse(txt, '貼上內容');
+});
+
+pasteInput.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
-    });
+        parseBtn.click();
+    }
+});
 
-    function handleFile(file) {
+clearPasteBtn.addEventListener('click', () => {
+    pasteInput.value = '';
+    pasteInput.focus();
+});
+
+/* =========================================================
+   檔案處理
+   ========================================================= */
+function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        currentBaseFileName = file.name.replace(/\.[^/.]+$/, '') || 'System_Setup';
         fileNameSpan.textContent = file.name;
-        currentBaseFileName = file.name.replace(/\.[^/.]+$/, "") || 'System_Setup';
-        infoBar.style.display = 'flex';
-        searchInput.value = '';
+        doParse(e.target.result, file.name);
+    };
+    reader.readAsText(file, 'UTF-8');
+}
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            renderTable(e.target.result);
-        };
-        reader.readAsText(file, 'UTF-8');
+/* =========================================================
+   主解析流程
+   ========================================================= */
+function doParse(text) {
+    noticeContainer.innerHTML = '';
+    searchInput.value = '';
+
+    const rows = parseSystemSetup(text);
+
+    if (!rows) {
+        infoBar.style.display = 'none';
+        tableContainer.innerHTML = '<div class="placeholder-text">未找到解析內容</div>';
+        showNotice('找不到起始段落「System Setup → System BIOS」。請確認內容包含 BIOS 選單區段。', true);
+        return;
+    }
+    if (rows.length === 0) {
+        infoBar.style.display = 'none';
+        tableContainer.innerHTML = '<div class="placeholder-text">無可顯示的參數</div>';
+        showNotice('已找到起始段落，但沒有解析到任何參數。', true);
+        return;
     }
 
-    // 智慧解析單行內容：兼容 Tab 分隔與項目符號無分隔格式
-    function parseLine(rawLine) {
-        let line = rawLine.replace(/\r/g, '');
-        if (!line.trim()) return null;
-
-        // 偵測項目符號層級 (•, o, , ▪, -, *)
-        let bulletLevel = 0;
-        const bulletMatch = line.match(/^\s*([•o▪\-\*])(?:\t|\s+)(.*)$/);
-        if (bulletMatch) {
-            const symbol = bulletMatch[1];
-            if (symbol === '•') bulletLevel = 1;
-            else if (symbol === 'o') bulletLevel = 2;
-            else bulletLevel = 3;
-            line = bulletMatch[2].trim();
-        } else {
-            line = line.trim();
-        }
-
-        if (!line) return null;
-
-        // 1. 優先檢查標準 Tab 分隔格式 (例如: "System Memory Size\t128 GB")
-        if (line.includes('\t')) {
-            const parts = line.split('\t');
-            return {
-                type: 'data',
-                param: parts[0].trim(),
-                value: parts.slice(1).join('\t').trim(),
-                format: 'Tab 分隔'
-            };
-        }
-
-        // 2. 檢查版權與 iDRAC 頁尾資訊
-        if (line.startsWith('©') || /^iDRAC v[\d\.]+/.test(line)) {
-            return { type: 'section', level: 1, text: line, format: '階層黏連' };
-        }
-
-        // 3. 檢查是否為已知標題或純留白參數
-        if (EXACT_HEADERS_OR_EMPTY.has(line)) {
-            const emptyFields = new Set([
-                "IP", "Subnet Mask", "Gateway", "Primary DNS", "Secondary DNS", "URI",
-                "iSCSI Initiator Name", "Initiator IP Address", "Initiator Subnet Mask",
-                "Initiator Gateway", "Target Name", "Target IP Address", "ISID",
-                "CHAP Name", "Reverse CHAP Name", "Host Security Key Path",
-                "Host IP Address", "Host Subnet Mask", "Host Gateway",
-                "Subsystem NQN", "Subsystem Address", "Subsystem NID", "Security Key Path",
-                "Asset Tag", "Static DNS Domain Name", "Alert Destination 1",
-                "Alert Destination 2", "Alert Destination 3", "Alert Destination 4",
-                "Alert Destination 5", "Alert Destination 6", "Alert Destination 7",
-                "Alert Destination 8", "Hot Spare", "Data Center Name", "Aisle Name",
-                "Rack Name", "Provisioning Server"
-            ]);
-            if (emptyFields.has(line)) {
-                return { type: 'data', param: line, value: '', format: '階層黏連' };
-            }
-            return { type: 'section', level: bulletLevel || 2, text: line, format: '階層黏連' };
-        }
-
-        // 4. 透過 BIOS 參數前綴字典進行精準切分
-        for (const prefix of KNOWN_PARAM_PREFIXES) {
-            if (line.startsWith(prefix)) {
-                const rest = line.slice(prefix.length);
-                if (rest === '' || !(/[a-z]$/.test(prefix) && /^[a-z]/.test(rest))) {
-                    return {
-                        type: 'data',
-                        param: prefix,
-                        value: rest.trim(),
-                        format: '階層黏連'
-                    };
-                }
-            }
-        }
-
-        // 5. 動態編號型參數切分
-        const dynamicMatch = line.match(
-            /^((?:DIMM Slot|PXE Device|HTTP Device|iSCSI Device|Connection|NVMe-oF Subsystem|Slot|NIC\.Slot\.)\s*\d+)(Enabled|Disabled|On|Off|Auto|None|.*)$/
-        );
-        if (dynamicMatch && dynamicMatch[2] !== '') {
-            return {
-                type: 'data',
-                param: dynamicMatch[1].trim(),
-                value: dynamicMatch[2].trim(),
-                format: '階層黏連'
-            };
-        }
-
-        // Alert Destination 10.0.0.0 -> "Alert Destination 1" + "0.0.0.0"
-        const alertIpMatch = line.match(/^(Alert Destination [1-8])(\d+\.\d+\.\d+\.\d+)$/);
-        if (alertIpMatch) {
-            return {
-                type: 'data',
-                param: alertIpMatch[1],
-                value: alertIpMatch[2],
-                format: '階層黏連'
-            };
-        }
-
-        // 6. 啟發式後備規則 (Fallback Regex)
-        const fallbackPatterns = [
-            /^(.*?)(\(Not captured\))$/,
-            /^(.*?)(Enabled|Disabled|On|Off|Auto|None|Full|Half|Standard|Linear|Normal|Balance|Public|public)$/,
-            /^(.*?)(\d+(?:\.\d+)*(?:\s*(?:GB|MB|KB|TB|MT\/s|GHz|MHz|Mbps|W))?)$/,
-            /^(.*?)(0x[0-9a-fA-F]+)$/
-        ];
-        for (const regex of fallbackPatterns) {
-            const m = line.match(regex);
-            if (m && m[1].trim().length > 0) {
-                return {
-                    type: 'data',
-                    param: m[1].trim(),
-                    value: m[2].trim(),
-                    format: '階層黏連'
-                };
-            }
-        }
-
-        // 7. 若皆無數值特徵，視為群組/分類標題
-        return {
-            type: 'section',
-            level: bulletLevel || 2,
-            text: line,
-            format: '階層黏連'
-        };
-    }
-
-    function renderTable(text) {
-        const lines = text.split(/\r?\n/);
-        let detectedFormat = 'Tab 分隔';
-        let dataCount = 0;
-        currentParsedRows = [];
-
-        let html = `
-            <table id="dataTable">
-                <thead>
-                    <tr>
-                        <th style="width: 48%;">參數名稱 (Parameter)</th>
-                        <th style="width: 52%;">數值 (Value)</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        lines.forEach(rawLine => {
-            const parsed = parseLine(rawLine);
-            if (!parsed) return;
-
-            currentParsedRows.push(parsed);
-
-            if (parsed.format === '階層黏連') {
-                detectedFormat = '階層項目符號格式';
-            }
-
-            if (parsed.type === 'section') {
-                const lvlClass = `sec-lvl-${Math.min(Math.max(parsed.level, 1), 3)}`;
-                html += `
-                    <tr class="section-header ${lvlClass}">
-                        <td colspan="2">${escapeHtml(parsed.text)}</td>
-                    </tr>
-                `;
-            } else {
-                dataCount++;
-                let valHtml = '';
-                if (parsed.value === '') {
-                    valHtml = '<span class="empty-value">(空白)</span>';
-                } else if (parsed.value === '(Not captured)') {
-                    valHtml = '<span class="not-captured">(Not captured)</span>';
-                } else {
-                    valHtml = escapeHtml(parsed.value);
-                }
-
-                html += `
-                    <tr class="data-row">
-                        <td class="param-cell">${escapeHtml(parsed.param)}</td>
-                        <td class="val-cell">${valHtml}</td>
-                    </tr>
-                `;
-            }
-        });
-
-        html += `</tbody></table>`;
-        tableContainer.innerHTML = html;
-        formatTypeSpan.textContent = detectedFormat;
-        rowCountSpan.textContent = `共解析 ${dataCount} 項參數`;
-    }
-
-    // 取得目前符合搜尋過濾條件的資料列
-    function getFilteredRows() {
-        const filter = searchInput.value.trim().toLowerCase();
-        if (!filter) return currentParsedRows;
-
-        return currentParsedRows.filter(row => {
-            if (row.type === 'section') return false;
-            const paramMatch = row.param.toLowerCase().includes(filter);
-            const valMatch = row.value.toLowerCase().includes(filter);
-            return paramMatch || valMatch;
-        });
-    }
-
-    // 複製為 Markdown 格式
-    async function copyAsMarkdown() {
-        const rows = getFilteredRows();
-        if (rows.length === 0) {
-            alert('目前沒有可複製的資料！');
-            return;
-        }
-
-        let mdLines = [`# ${currentBaseFileName}\n`];
-        let inTable = false;
-
-        const escapeMdCell = (str) => String(str || '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
-
-        rows.forEach(row => {
-            if (row.type === 'section') {
-                if (inTable) {
-                    mdLines.push('');
-                    inTable = false;
-                }
-                const hashes = '#'.repeat(Math.min(Math.max(row.level + 1, 2), 4));
-                mdLines.push(`${hashes} ${row.text}\n`);
-            } else {
-                if (!inTable) {
-                    mdLines.push('| 參數名稱 (Parameter) | 數值 (Value) |');
-                    mdLines.push('| :--- | :--- |');
-                    inTable = true;
-                }
-                const displayVal = row.value === '' ? '*(空白)*' : escapeMdCell(row.value);
-                mdLines.push(`| ${escapeMdCell(row.param)} | ${displayVal} |`);
-            }
-        });
-
-        const markdownText = mdLines.join('\n').trim() + '\n';
-
-        try {
-            await navigator.clipboard.writeText(markdownText);
-        } catch (err) {
-            // 相容舊版瀏覽器或非 HTTPS 環境的複製備案
-            const textarea = document.createElement('textarea');
-            textarea.value = markdownText;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-        }
-
-        // 視覺回饋
-        const originalText = copyMdBtn.innerHTML;
-        copyMdBtn.innerHTML = '✅ 已複製 Markdown！';
-        copyMdBtn.classList.add('copied');
-        setTimeout(() => {
-            copyMdBtn.innerHTML = originalText;
-            copyMdBtn.classList.remove('copied');
-        }, 2000);
-    }
-
-    // 下載為 Excel (.xlsx)
-    function downloadAsExcel() {
-        const rows = getFilteredRows();
-        if (rows.length === 0) {
-            alert('目前沒有可匯出的資料！');
-            return;
-        }
-
-        if (typeof XLSX === 'undefined') {
-            alert('Excel 匯出元件尚未載入完成，請確認網路連線或稍後再試。');
-            return;
-        }
-
-        const aoa = [
-            ['參數名稱 (Parameter)', '數值 (Value)']
-        ];
-
-        rows.forEach(row => {
-            if (row.type === 'section') {
-                const indent = row.level === 1 ? '■ ' : (row.level === 2 ? '  ▸ ' : '    • ');
-                aoa.push([`${indent}${row.text}`, '']);
-            } else {
-                aoa.push([row.param, row.value]);
-            }
-        });
-
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-        // 設定欄位寬度
-        ws['!cols'] = [
-            { wch: 52 },
-            { wch: 44 }
-        ];
-
-        XLSX.utils.book_append_sheet(wb, ws, 'System Setup');
-
-        const suffix = searchInput.value.trim() ? '_filtered' : '';
-        XLSX.writeFile(wb, `${currentBaseFileName}${suffix}.xlsx`);
-    }
-
-    // 即時搜尋功能
-    searchInput.addEventListener('input', function() {
-        const filter = this.value.toLowerCase();
-        const rows = document.querySelectorAll('#dataTable tbody tr');
-
-        rows.forEach(row => {
-            if (row.classList.contains('section-header')) {
-                row.style.display = filter === '' ? '' : 'none';
-            } else {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(filter) ? '' : 'none';
-            }
-        });
+    // 學習本次 Log 中的枚舉值（累積到 paramEnumMap）
+    rows.forEach(r => {
+        if (r.type === 'data') learnEnum(r.param, r.value);
     });
 
-    function escapeHtml(str) {
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+    currentRows = rows;
+
+    infoBar.style.display = 'flex';
+    formatTypeSpan.textContent = 'System Setup 區段';
+    const dataCount = rows.filter(r => r.type === 'data').length;
+    rowCountSpan.textContent =
+        `本次解析 ${dataCount} 項參數 ／ 累積已知 ${paramEnumMap.size} 個參數、${countEnumEntries()} 個候選值`;
+
+    renderRows(currentRows);
+}
+
+/* 統計目前累積的候選值總數 */
+function countEnumEntries() {
+    let n = 0;
+    paramEnumMap.forEach(s => { n += s.size; });
+    return n;
+}
+
+/* =========================================================
+   解析：只從 System Setup → System BIOS 之後開始
+   ========================================================= */
+function parseSystemSetup(text) {
+    const lines = text.split(/\r?\n/);
+
+    // 尋找起點：System Setup 後緊接 System BIOS
+    let startIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim() !== 'System Setup') continue;
+        let j = i + 1;
+        while (j < lines.length && lines[j].trim() === '') j++;
+        if (j < lines.length && lines[j].trim() === 'System BIOS') {
+            startIdx = i;
+            break;
+        }
     }
+    if (startIdx === -1) return null;
+
+    const out = [];
+    for (let i = startIdx; i < lines.length; i++) {
+        const line = lines[i].replace(/\r/g, '').trim();
+        if (!line) continue;
+
+        // 結束標記（頁尾）
+        if (/^iDRAC\s+v[\d.]/i.test(line)) break;
+        if (/^©/.test(line)) break;
+
+        const parsed = parseSingleLine(line);
+        if (!parsed) continue;
+
+        // 略過空值「預告行」：下一行是同名參數的有值行
+        if (parsed.type === 'data' && parsed.value === '') {
+            let k = i + 1;
+            while (k < lines.length && lines[k].trim() === '') k++;
+            if (k < lines.length) {
+                const next = lines[k].trim();
+                if (next.startsWith(parsed.param) && next.length > parsed.param.length) {
+                    const rest = next.slice(parsed.param.length).trim();
+                    if (rest && /^[A-Za-z0-9(]/.test(rest)) continue;
+                }
+            }
+        }
+
+        out.push(parsed);
+    }
+    return out;
+}
+
+/* =========================================================
+   單行解析
+   ========================================================= */
+function parseSingleLine(line) {
+    /* 1. 精確分類標題 */
+    if (SECTION_TITLES.has(line)) {
+        return { type: 'section', text: line, level: sectionLevel(line) };
+    }
+
+    /* 2. 動態編號型標題 */
+    if (DYN_SECTION_RE.test(line)) {
+        return { type: 'section', text: line, level: 3 };
+    }
+
+    /* 3. 動態編號型參數 */
+    let m = line.match(DYN_PARAM_RE);
+    if (m && m[2].trim() !== '') {
+        return { type: 'data', param: m[1].trim(), value: m[2].trim() };
+    }
+
+    /* 4. 已知參數最長前綴 */
+    const hit = matchKnownParam(line);
+    if (hit !== null) {
+        return { type: 'data', param: hit, value: line.slice(hit.length).trim() };
+    }
+
+    /* 5. Alert Destination 動態編號 */
+    m = line.match(ALERT_RE);
+    if (m) {
+        return { type: 'data', param: m[1].trim(), value: m[2].trim() };
+    }
+
+    /* 6. Fallback 規則 */
+    const fallbackPatterns = [
+        /^(.*?)(\(Not captured\))$/,
+        /^(.*?)(Enabled|Disabled|On|Off|Auto|None|Full|Half|Standard|Linear|Normal|Balance|Public|public)$/,
+        /^(.*?)(\d+(?:\.\d+)*(?:\s*(?:GB|MB|KB|TB|MT\/s|GHz|MHz|Mbps|W))?)$/,
+        /^(.*?)(0x[0-9a-fA-F]+)$/
+    ];
+    for (const re of fallbackPatterns) {
+        const fm = line.match(re);
+        if (fm && fm[1].trim().length > 0) {
+            return { type: 'data', param: fm[1].trim(), value: fm[2].trim() };
+        }
+    }
+
+    /* 7. 其餘視為分類標題 */
+    return { type: 'section', text: line, level: 3 };
+}
+
+/* 最長前綴比對 */
+function matchKnownParam(line) {
+    for (let i = 0; i < SORTED_PARAMS.length; i++) {
+        const p = SORTED_PARAMS[i];
+        if (line.startsWith(p)) {
+            const rest = line.slice(p.length);
+            // 避免 "VLAN" 吃掉 "VLANXxx" 之類誤切
+            if (rest && /^[a-z]/.test(rest) && /[A-Za-z]$/.test(p)) continue;
+            return p;
+        }
+    }
+    return null;
+}
+
+/* 分類標題層級 */
+function sectionLevel(text) {
+    if (text === 'System Setup') return 1;
+    if (text === 'System BIOS' || text === 'iDRAC Settings') return 2;
+    return 3;
+}
+
+/* =========================================================
+   枚舉值學習（累積，跨 Log）
+   ========================================================= */
+function learnEnum(param, value) {
+    if (!param || !value) return;
+    if (value === '(Not captured)') return;
+    if (!looksLikeEnum(value)) return;
+
+    let set = paramEnumMap.get(param);
+    if (!set) {
+        set = new Set();
+        paramEnumMap.set(param, set);
+    }
+    set.add(value);
+}
+
+/* 判斷是否適合作為候選 enum */
+function looksLikeEnum(v) {
+    if (!v) return false;
+    if (v.length > 64) return false;
+    // 排除 IPv6 / MAC / NQN / 唯一識別碼等
+    if (/::/.test(v)) return false;
+    if (/^nqn\./i.test(v)) return false;
+    if (/^[0-9a-f:.\-]+$/i.test(v) && v.length > 10) return false;
+    // 必須以字母開頭，僅允許常見字元
+    if (!/^[A-Za-z][A-Za-z0-9 ._()\/\-:]*$/.test(v)) return false;
+    return true;
+}
+
+/* =========================================================
+   渲染
+   ========================================================= */
+function renderRows(rows) {
+    let html = `
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th style="width: 50%;">參數名稱 (Parameter) <span style="font-weight:400;opacity:.8;">［候選值］</span></th>
+                    <th style="width: 50%;">數值 (Value)</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    rows.forEach(row => {
+        if (row.type === 'section') {
+            const lvl = Math.min(Math.max(row.level || 3, 1), 3);
+            html += `
+                <tr class="section-header sec-lvl-${lvl}">
+                    <td colspan="2">${escapeHtml(row.text)}</td>
+                </tr>
+            `;
+            return;
+        }
+
+        const labelHtml = buildParamLabel(row.param);
+        const hasValue = row.value && row.value !== '(Not captured)' && row.value.trim() !== '';
+        const valHtml = hasValue
+            ? escapeHtml(row.value)
+            : '<span class="unknown-value">?</span>';
+
+        html += `
+            <tr class="data-row">
+                <td class="param-cell">${labelHtml}</td>
+                <td class="val-cell">${valHtml}</td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
+    tableContainer.innerHTML = html;
+}
+
+/* 左側欄：參數名稱 + 已知候選值 */
+function buildParamLabel(param) {
+    let html = escapeHtml(param);
+    const set = paramEnumMap.get(param);
+    if (set && set.size > 0) {
+        const values = Array.from(set).sort((a, b) => a.localeCompare(b));
+        html += ` <span class="enum-hint">[${escapeHtml(values.join(', '))}]</span>`;
+    }
+    return html;
+}
+
+/* =========================================================
+   「尚未 Parse 前」的骨架表格（右側全部為 ?）
+   ========================================================= */
+function renderSkeleton() {
+    if (currentRows.length > 0) return;
+
+    let html = `
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th style="width: 50%;">參數名稱 (Parameter) <span style="font-weight:400;opacity:.8;">［候選值］</span></th>
+                    <th style="width: 50%;">數值 (Value)</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    KNOWN_PARAM_SET.forEach(p => {
+        html += `
+            <tr class="data-row">
+                <td class="param-cell">${buildParamLabel(p)}</td>
+                <td class="val-cell"><span class="unknown-value">?</span></td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
+    tableContainer.innerHTML = html;
+
+    showNotice('尚未載入任何 Log — 下方為已知參數骨架，數值皆顯示為「?」。左側［］內為預置與累積的候選值。');
+}
+
+/* =========================================================
+   提示列
+   ========================================================= */
+function showNotice(msg, isError) {
+    noticeContainer.innerHTML = `<div class="notice-bar${isError ? ' error' : ''}">${escapeHtml(msg)}</div>`;
+}
+
+/* =========================================================
+   即時搜尋
+   ========================================================= */
+searchInput.addEventListener('input', function () {
+    const filter = this.value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#dataTable tbody tr');
+
+    rows.forEach(row => {
+        if (row.classList.contains('section-header')) {
+            row.style.display = filter === '' ? '' : 'none';
+            return;
+        }
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
+});
+
+/* =========================================================
+   取得目前（過濾後）資料列
+   ========================================================= */
+function getFilteredRows() {
+    const filter = searchInput.value.trim().toLowerCase();
+    if (!filter) return currentRows;
+
+    return currentRows.filter(row => {
+        if (row.type === 'section') return false;
+        const p = (row.param || '').toLowerCase();
+        const v = (row.value || '').toLowerCase();
+        return p.includes(filter) || v.includes(filter);
+    });
+}
+
+/* =========================================================
+   複製 Markdown
+   ========================================================= */
+copyMdBtn.addEventListener('click', async () => {
+    const rows = getFilteredRows();
+    if (rows.length === 0) {
+        alert('目前沒有可複製的資料！');
+        return;
+    }
+
+    const escapeMdCell = s => String(s == null ? '' : s).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+
+    let mdLines = [`# ${currentBaseFileName}\n`];
+    let inTable = false;
+
+    rows.forEach(row => {
+        if (row.type === 'section') {
+            if (inTable) { mdLines.push(''); inTable = false; }
+            const hashes = '#'.repeat(Math.min(Math.max((row.level || 3) + 1, 2), 4));
+            mdLines.push(`${hashes} ${row.text}\n`);
+        } else {
+            if (!inTable) {
+                mdLines.push('| 參數名稱 (Parameter) | 數值 (Value) |');
+                mdLines.push('| :--- | :--- |');
+                inTable = true;
+            }
+            const hasValue = row.value && row.value !== '(Not captured)';
+            const displayVal = hasValue ? escapeMdCell(row.value) : '?';
+            mdLines.push(`| ${escapeMdCell(row.param)} | ${displayVal} |`);
+        }
+    });
+
+    const markdownText = mdLines.join('\n').trim() + '\n';
+
+    try {
+        await navigator.clipboard.writeText(markdownText);
+    } catch (err) {
+        const ta = document.createElement('textarea');
+        ta.value = markdownText;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+    }
+
+    const original = copyMdBtn.innerHTML;
+    copyMdBtn.innerHTML = '✅ 已複製 Markdown！';
+    copyMdBtn.classList.add('copied');
+    setTimeout(() => {
+        copyMdBtn.innerHTML = original;
+        copyMdBtn.classList.remove('copied');
+    }, 2000);
+});
+
+/* =========================================================
+   匯出 Excel（含候選值欄）
+   ========================================================= */
+document.getElementById('exportExcelBtn').addEventListener('click', () => {
+    const rows = getFilteredRows();
+    if (rows.length === 0) {
+        alert('目前沒有可匯出的資料！');
+        return;
+    }
+    if (typeof XLSX === 'undefined') {
+        alert('Excel 匯出元件尚未載入完成，請確認網路連線或稍後再試。');
+        return;
+    }
+
+    const aoa = [['參數名稱 (Parameter)', '候選值 (Enum)', '數值 (Value)']];
+
+    rows.forEach(row => {
+        if (row.type === 'section') {
+            const indent = (row.level || 3) === 1 ? '■ ' : ((row.level || 3) === 2 ? '  ▶ ' : '    • ');
+            aoa.push([`${indent}${row.text}`, '', '']);
+        } else {
+            const set = paramEnumMap.get(row.param);
+            const enumStr = set ? Array.from(set).sort((a, b) => a.localeCompare(b)).join(', ') : '';
+            const hasValue = row.value && row.value !== '(Not captured)';
+            aoa.push([row.param, enumStr, hasValue ? row.value : '?']);
+        }
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 52 }, { wch: 44 }, { wch: 44 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'System Setup');
+
+    const suffix = searchInput.value.trim() ? '_filtered' : '';
+    XLSX.writeFile(wb, `${currentBaseFileName}${suffix}.xlsx`);
+});
+
+/* =========================================================
+   工具
+   ========================================================= */
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/* =========================================================
+   初始化
+   ========================================================= */
+renderSkeleton();
 </script>
 
 </body>
