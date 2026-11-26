@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BIOS / iDRAC System Setup 參數檢視器</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
     * { box-sizing: border-box; }
     body {
@@ -217,20 +218,46 @@
         display: inline-block;
     }
     .placeholder-text { text-align: center; color: #6c757d; padding: 25px 0; }
+
+    /* ---------- v2 新增樣式 ---------- */
+    .filter-select {
+        padding: 4px 8px;
+        border: 1px solid #ced4da;
+        border-radius: 3px;
+        font-size: 12px;
+        background: #fff;
+        color: #212529;
+        height: 26px;
+    }
+    .unknown-flag {
+        display: inline-block;
+        background: #fff3cd;
+        color: #8a6d00;
+        border: 1px solid #ffe08a;
+        border-radius: 3px;
+        font-size: 10.5px;
+        padding: 0 4px;
+        margin-left: 4px;
+        font-weight: 600;
+        vertical-align: baseline;
+    }
+    tr.unknown-row td.param-cell { color: #8a6d00; }
+    tr.no-value td.val-cell { color: #adb5bd; }
+    .ver-badge { font-size: 11px; color: #6c757d; font-weight: 400; }
 </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-row">
-        <h2>BIOS / iDRAC System Setup 參數檢視器</h2>
-        <span class="badge-hint">解析範圍：<b>System Setup → System BIOS → System Information</b> 起</span>
+        <h2>BIOS / iDRAC System Setup 參數檢視器 <span class="ver-badge">v2</span></h2>
+        <span class="badge-hint">解析範圍：<b>System Setup → System BIOS</b> 起｜支援 .txt / .log / .md / .docx / .doc</span>
     </div>
 
-    <div class="upload-area" id="dropZone">
+        <div class="upload-area" id="dropZone">
         <span class="upload-btn">選擇檔案</span>
-        <span>點擊或拖曳 System Setup (.txt) 檔案至此處</span>
-        <input type="file" id="fileInput" accept=".txt,.log,.text">
+        <span>點擊或拖曳 System Setup 檔案至此處（支援 .txt / .log / .md / .docx / .doc）</span>
+        <input type="file" id="fileInput" accept=".txt,.log,.text,.md,.markdown,.doc,.docx">
     </div>
 
     <div class="paste-panel">
@@ -250,7 +277,13 @@
             <span class="format-tag" id="formatType"></span>
             <span id="rowCount" style="color: #495057;"></span>
         </div>
-        <div class="toolbar-actions">
+                <div class="toolbar-actions">
+            <select id="filterSelect" class="filter-select" title="依狀態篩選">
+                <option value="all">全部</option>
+                <option value="value">僅有值</option>
+                <option value="empty">僅無值</option>
+                <option value="unknown">僅未識別</option>
+            </select>
             <button type="button" class="action-btn btn-md" id="copyMdBtn">📋 複製 Markdown</button>
             <button type="button" class="action-btn btn-excel" id="exportExcelBtn">📊 下載 Excel</button>
             <input type="text" id="searchInput" class="search-box" placeholder="即時過濾參數或數值...">
@@ -281,6 +314,7 @@ const pasteInput     = document.getElementById('pasteInput');
 const parseBtn       = document.getElementById('parseBtn');
 const clearPasteBtn  = document.getElementById('clearPasteBtn');
 const noticeContainer= document.getElementById('noticeContainer');
+const filterSelect   = document.getElementById('filterSelect');
 
 let currentRows = [];
 let currentBaseFileName = 'System_Setup';
@@ -291,14 +325,12 @@ let currentBaseFileName = 'System_Setup';
    ========================================================= */
 const PRELOADED_ENUMS = {
     "System Model Name": ["PowerEdge XR9700"],
-    "System BIOS Version": [
-        "80.0.4 [TEST 1125 M2x2 Gen1 v3]",
-        "1.0.0",
-        "0.0.5 [X-REV]"
-    ],
+    "System BIOS Version": ["80.0.4 [TEST 1125 M2x2 Gen1 v3]", "1.0.0", "0.0.5 [X-REV]"],
+    "System Service Tag": ["1234567"],
     "System Manufacturer": ["Dell Inc."],
     "System Manufacturer Contact Information": ["www.dell.com"],
     "System FPGA Version": ["1.0.1", "1.0.2", "0.4.2"],
+    "UEFI Compliance Version": ["2.7"],
 
     "System Memory Size": ["128 GB", "256 GB"],
     "System Memory Type": ["ECC DDR5"],
@@ -313,6 +345,10 @@ const PRELOADED_ENUMS = {
     "Correctable Error Logging": ["Disabled", "Enabled"],
     "Memory Paging Policy": ["PagingClosed"],
     "Memory-Mapped I/O Base": ["56TB"],
+    "DIMM Slot 0": ["Enabled"],
+    "DIMM Slot 1": ["Enabled"],
+    "DIMM Slot 2": ["Enabled"],
+    "DIMM Slot 3": ["Enabled"],
 
     "Logical Processor": ["Enabled"],
     "Virtualization Technology": ["Enabled"],
@@ -361,7 +397,7 @@ const PRELOADED_ENUMS = {
     "UEFI Boot Sequence": [
         "Disk.USBFront.1-1,NIC.PxeDevice.1-1",
         "PCIeSSD.Slot.21-0,NIC.PxeDevice.1-1",
-        "PCIeSSD.Slot.21-0,NIC.PxeDevice.1-1,GenericUSB.Placeholder.1-1"
+        "PCIeSSD.Slot.21-0,Disk.USBFront.1-1,NIC.PxeDevice.1-1"
     ],
 
     "Number of PXE Devices": ["4"],
@@ -369,6 +405,10 @@ const PRELOADED_ENUMS = {
     "PXE Device 2": ["Disabled"],
     "PXE Device 3": ["Disabled"],
     "PXE Device 4": ["Disabled"],
+    "HTTP Device 1": ["Disabled"],
+    "HTTP Device 2": ["Disabled"],
+    "HTTP Device 3": ["Disabled"],
+    "HTTP Device 4": ["Disabled"],
     "Interface": ["NIC.Embedded.4-1-1", "NIC.Embedded.1-1-1"],
     "Protocol": ["IPv4"],
     "VLAN": ["Disabled"],
@@ -601,6 +641,7 @@ const KNOWN_PARAMS = [
 
     "Number of PXE Devices",
     "PXE Device 1", "PXE Device 2", "PXE Device 3", "PXE Device 4",
+    "HTTP Device 1", "HTTP Device 2", "HTTP Device 3", "HTTP Device 4",
     "Interface", "Protocol", "VLAN", "VLAN ID", "VLAN Priority", "DHCP",
     "IP", "Subnet Mask", "Gateway", "DNS Info via DHCP",
     "Primary DNS", "Secondary DNS", "URI", "TLS Authentication Mode",
@@ -679,6 +720,9 @@ const KNOWN_PARAMS = [
     "Enable Alert Destination 3", "Enable Alert Destination 4",
     "Enable Alert Destination 5", "Enable Alert Destination 6",
     "Enable Alert Destination 7", "Enable Alert Destination 8",
+    "Alert Destination 1", "Alert Destination 2", "Alert Destination 3",
+    "Alert Destination 4", "Alert Destination 5", "Alert Destination 6",
+    "Alert Destination 7", "Alert Destination 8",
     "Community String",
 
     "Virtual Media Status", "USB Management Port Mode",
@@ -783,18 +827,125 @@ clearPasteBtn.addEventListener('click', () => {
    檔案處理（先嚐試 UTF-8，若含亂碼用 Latin-1 重讀）
    ========================================================= */
 function handleFile(file) {
-    const readerUtf8 = new FileReader();
-    readerUtf8.onload = function (e) {
-        let text = e.target.result;
-        // 若 UTF-8 解碼後仍含常見亂碼特徵，改用 Latin-1 再試一次
-        if (/[\uFFFD]/.test(text) && /[‚ÄĘÔāß]/.test(text) === false) {
-            // 這裡不強制替換，讓解析層的容錯邏輯處理
+    const name = (file.name || '').toLowerCase();
+    const ext = name.split('.').pop();
+
+    currentBaseFileName = file.name.replace(/\.[^/.]+$/, '') || 'System_Setup';
+    fileNameSpan.textContent = file.name;
+
+    if (ext === 'docx') {
+        readDocx(file);
+    } else if (ext === 'doc') {
+        readDoc(file);
+    } else if (ext === 'md' || ext === 'markdown') {
+        readTextAsText(file, text => {
+            const setupText = markdownToSetup(text);
+            doParse(setupText);
+        });
+    } else {
+        readTextAsText(file, text => doParse(text));
+    }
+}
+
+function readTextAsText(file, cb) {
+    const reader = new FileReader();
+    reader.onload = e => cb(e.target.result);
+    reader.onerror = () => showNotice('讀取檔案失敗：' + (reader.error && reader.error.message), true);
+    reader.readAsText(file, 'UTF-8');
+}
+
+function readDocx(file) {
+    if (typeof JSZip === 'undefined') {
+        showNotice('JSZip 未載入（請確認網路），無法解析 .docx；請改上傳 .txt / .md。', true);
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = async e => {
+        try {
+            const zip = await JSZip.loadAsync(e.target.result);
+            const xmlFile = zip.file('word/document.xml');
+            if (!xmlFile) throw new Error('找不到 word/document.xml');
+            const xml = await xmlFile.async('string');
+            const doc = new DOMParser().parseFromString(xml, 'application/xml');
+            const NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+            const paras = doc.getElementsByTagNameNS(NS, 'p');
+            const lines = [];
+            for (let i = 0; i < paras.length; i++) {
+                const texts = paras[i].getElementsByTagNameNS(NS, 't');
+                let s = '';
+                for (let j = 0; j < texts.length; j++) s += texts[j].textContent;
+                lines.push(s);
+            }
+            doParse(lines.join('\n'));
+        } catch (err) {
+            console.error(err);
+            showNotice('.docx 解析失敗：' + err.message, true);
         }
-        currentBaseFileName = file.name.replace(/\.[^/.]+$/, '') || 'System_Setup';
-        fileNameSpan.textContent = file.name;
+    };
+    reader.onerror = () => showNotice('讀取 .docx 失敗。', true);
+    reader.readAsArrayBuffer(file);
+}
+
+function readDoc(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+        const buf = new Uint8Array(e.target.result);
+        const isOle = buf.length > 8 &&
+            buf[0] === 0xD0 && buf[1] === 0xCF && buf[2] === 0x11 && buf[3] === 0xE0;
+        if (isOle) {
+            showNotice('.doc 為舊式二進位格式，前端無法可靠解析。請用 Word 另存為 .docx 或 .txt 後重新上傳。', true);
+            return;
+        }
+        const text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
         doParse(text);
     };
-    readerUtf8.readAsText(file, 'UTF-8');
+    reader.onerror = () => showNotice('讀取 .doc 失敗。', true);
+    reader.readAsArrayBuffer(file);
+}
+
+function markdownToSetup(text) {
+    const lines = text.split(/\r?\n/);
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+        const raw = lines[i];
+        const line = raw.trim();
+        if (!line) { out.push(''); continue; }
+
+        // Markdown 表格行
+        if (line.startsWith('|') && line.endsWith('|')) {
+            let cells = line.slice(1, -1).split('|').map(c => c.trim());
+            if (cells.length && cells.every(c => /^:?-+:?$/.test(c))) continue;
+            if (cells.length >= 2 && /參數名稱|Parameter/i.test(cells[0])) continue;
+            if (!cells[0]) continue;
+
+            let param = cells[0];
+            let value = cells.length >= 3 ? cells[2] : (cells[1] || '');
+
+            const cleaned = param.replace(/^[■▶•\u25a0\u25b6\u2022]+\s*/, '');
+            if (SECTION_TITLES.has(cleaned) || DYN_SECTION_RE.test(cleaned)) {
+                out.push(cleaned);
+                continue;
+            }
+
+            const combined = (param + ' ' + value).trim();
+            const matched = matchKnownParam(combined);
+            if (matched && matched.length > param.length) {
+                param = matched;
+                value = combined.slice(matched.length).trim();
+            }
+
+            out.push(param + '\t' + value);
+            continue;
+        }
+
+        if (/^#{1,6}\s+/.test(line)) {
+            out.push(line.replace(/^#+\s+/, ''));
+            continue;
+        }
+
+        out.push(raw);
+    }
+    return out.join('\n');
 }
 
 /* =========================================================
@@ -803,6 +954,7 @@ function handleFile(file) {
 function doParse(text) {
     noticeContainer.innerHTML = '';
     searchInput.value = '';
+    if (filterSelect) filterSelect.value = 'all';
 
     const rows = parseSystemSetup(text);
 
@@ -819,8 +971,12 @@ function doParse(text) {
         return;
     }
 
+    let unknownCount = 0;
     rows.forEach(r => {
-        if (r.type === 'data') learnEnum(r.param, r.value);
+        if (r.type === 'data') {
+            learnEnum(r.param, r.value);
+            if (!KNOWN_PARAM_SET.includes(r.param)) unknownCount++;
+        }
     });
 
     currentRows = rows;
@@ -829,9 +985,11 @@ function doParse(text) {
     formatTypeSpan.textContent = 'System Setup 區段';
     const dataCount = rows.filter(r => r.type === 'data').length;
     rowCountSpan.textContent =
-        `本次解析 ${dataCount} 項參數 ／ 累積已知 ${paramEnumMap.size} 個參數、${countEnumEntries()} 個候選值`;
+        `本次解析 ${dataCount} 項參數 ／ 累積已知 ${paramEnumMap.size} 個參數、${countEnumEntries()} 個候選值` +
+        (unknownCount > 0 ? ` ／ ⚠ 未識別 ${unknownCount} 項` : '');
 
     renderRows(currentRows);
+    applyFilters();
 }
 
 function countEnumEntries() {
@@ -977,11 +1135,7 @@ function parseSingleLine(line) {
 function matchKnownParam(line) {
     for (let i = 0; i < SORTED_PARAMS.length; i++) {
         const p = SORTED_PARAMS[i];
-        if (line.startsWith(p)) {
-            const rest = line.slice(p.length);
-            if (rest && /^[a-z]/.test(rest) && /[A-Za-z]$/.test(p)) continue;
-            return p;
-        }
+        if (line.startsWith(p)) return p;
     }
     return null;
 }
@@ -998,6 +1152,8 @@ function sectionLevel(text) {
 function learnEnum(param, value) {
     if (!param || !value) return;
     if (value === '(Not captured)') return;
+    if (/password|secret|key path|encryption key/i.test(param)) return;
+    if (/^system (time|date)$/i.test(param)) return;
     if (!looksLikeEnum(value)) return;
 
     let set = paramEnumMap.get(param);
@@ -1010,13 +1166,22 @@ function learnEnum(param, value) {
 
 function looksLikeEnum(v) {
     if (!v) return false;
-    if (v.length > 64) return false;
+    const s = String(v).trim();
+    if (!s) return false;
+    if (s.length > 64) return false;
 
-    if (/^nqn\./i.test(v)) return false;
-    if (/^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i.test(v)) return false;
-    if (/^fe80:/i.test(v)) return false;
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) return false;
-    if (/^::/.test(v) || /::$/.test(v)) return false;
+    if (/^nqn\./i.test(s)) return false;
+    if (/^[0-9a-f]{2}([:-][0-9a-f]{2}){5}$/i.test(s)) return false;
+    if (/^fe80:/i.test(s)) return false;
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) return false;
+    if (/^::/.test(s) || /::$/.test(s)) return false;
+
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return false;
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return false;
+    if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) return false;
+
+    if (/^[0-9a-f]{32,}$/i.test(s)) return false;
+    if (/^0+$/.test(s) && s.length > 4) return false;
 
     return true;
 }
@@ -1047,14 +1212,19 @@ function renderRows(rows) {
             return;
         }
 
-        const labelHtml = buildParamLabel(row.param);
+        const isUnknown = !KNOWN_PARAM_SET.includes(row.param);
         const hasValue = row.value && row.value !== '(Not captured)' && row.value.trim() !== '';
+        const labelHtml = buildParamLabel(row.param, isUnknown);
         const valHtml = hasValue
             ? escapeHtml(row.value)
             : '<span class="unknown-value">?</span>';
 
+        const cls = ['data-row'];
+        if (isUnknown) cls.push('unknown-row');
+        if (!hasValue) cls.push('no-value');
+
         html += `
-            <tr class="data-row">
+            <tr class="${cls.join(' ')}">
                 <td class="param-cell">${labelHtml}</td>
                 <td class="val-cell">${valHtml}</td>
             </tr>
@@ -1065,8 +1235,9 @@ function renderRows(rows) {
     tableContainer.innerHTML = html;
 }
 
-function buildParamLabel(param) {
+function buildParamLabel(param, isUnknown) {
     let html = escapeHtml(param);
+    if (isUnknown) html += ' <span class="unknown-flag" title="未在 KNOWN_PARAMS 中">NEW</span>';
     const set = paramEnumMap.get(param);
     if (set && set.size > 0) {
         const values = Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -1114,29 +1285,61 @@ function showNotice(msg, isError) {
 /* =========================================================
    即時搜尋
    ========================================================= */
-searchInput.addEventListener('input', function () {
-    const filter = this.value.trim().toLowerCase();
-    const rows = document.querySelectorAll('#dataTable tbody tr');
+function applyFilters() {
+    const filter = searchInput.value.trim().toLowerCase();
+    const mode = filterSelect ? filterSelect.value : 'all';
+    const tbody = document.querySelector('#dataTable tbody');
+    if (!tbody) return;
+    const trs = Array.from(tbody.children);
 
-    rows.forEach(row => {
-        if (row.classList.contains('section-header')) {
-            row.style.display = filter === '' ? '' : 'none';
-            return;
-        }
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(filter) ? '' : 'none';
+    const noFilter = !filter && mode === 'all';
+    const marks = trs.map(tr => {
+        if (tr.classList.contains('section-header')) return { tr, isSection: true, show: false };
+        let show = true;
+        if (filter) show = tr.textContent.toLowerCase().includes(filter);
+        if (show && mode === 'value') show = !tr.classList.contains('no-value');
+        else if (show && mode === 'empty') show = tr.classList.contains('no-value');
+        else if (show && mode === 'unknown') show = tr.classList.contains('unknown-row');
+        return { tr, isSection: false, show };
     });
-});
+
+    if (noFilter) {
+        marks.forEach(m => { m.tr.style.display = ''; });
+        return;
+    }
+
+    let anyVisible = false;
+    for (let i = marks.length - 1; i >= 0; i--) {
+        const m = marks[i];
+        if (m.isSection) {
+            m.tr.style.display = anyVisible ? '' : 'none';
+            anyVisible = false;
+        } else {
+            m.tr.style.display = m.show ? '' : 'none';
+            if (m.show) anyVisible = true;
+        }
+    }
+}
+
+searchInput.addEventListener('input', applyFilters);
+if (filterSelect) filterSelect.addEventListener('change', applyFilters);
 
 function getFilteredRows() {
     const filter = searchInput.value.trim().toLowerCase();
-    if (!filter) return currentRows;
+    const mode = filterSelect ? filterSelect.value : 'all';
+    if (!filter && mode === 'all') return currentRows;
 
     return currentRows.filter(row => {
         if (row.type === 'section') return false;
         const p = (row.param || '').toLowerCase();
         const v = (row.value || '').toLowerCase();
-        return p.includes(filter) || v.includes(filter);
+        if (filter && !p.includes(filter) && !v.includes(filter)) return false;
+        const hasValue = row.value && row.value !== '(Not captured)' && row.value.trim() !== '';
+        const isUnknown = !KNOWN_PARAM_SET.includes(row.param);
+        if (mode === 'value') return hasValue;
+        if (mode === 'empty') return !hasValue;
+        if (mode === 'unknown') return isUnknown;
+        return true;
     });
 }
 
